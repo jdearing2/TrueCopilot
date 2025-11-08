@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Topic Quiz — True Copilot</title>
+    <style>
+        body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue',Arial;margin:0;padding:0;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f6f8fa}
+        .card{background:white;border-radius:8px;box-shadow:0 6px 18px rgba(20,30,40,0.08);width:720px;max-width:94%;padding:24px}
+        h1{margin:0 0 12px;font-size:20px}
+        .controls{display:flex;gap:8px;align-items:center;margin-bottom:18px}
+        input[type="text"]{flex:1;padding:10px 12px;border:1px solid #dfe6ee;border-radius:6px;font-size:15px}
+        button{padding:10px 14px;border-radius:6px;border:0;background:#2563eb;color:white;cursor:pointer}
+        .hidden{display:none}
+        .question{margin-top:8px;padding:14px;border-radius:6px;background:#fbfdff;border:1px solid #eef4ff}
+        .options{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+        .opt{padding:12px;border-radius:6px;border:1px solid #e3e8ef;background:white;cursor:pointer;transition:all .12s}
+        .opt:hover{transform:translateY(-2px);box-shadow:0 6px 12px rgba(33,47,77,0.06)}
+        .opt.selected{background:#eef2ff;border-color:#c7d2fe}
+        .progress{margin-top:14px;font-size:14px;color:#475569}
+        .results{margin-top:14px}
+        .small{font-size:13px;color:#6b7280}
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h1>Quick Topic Quiz</h1>
+        <div class="small">Enter any topic and you'll be asked a short series of multiple-choice questions. Click one answer per question to proceed.</div>
+
+        <div class="controls" id="startArea">
+            <input id="topicInput" type="text" placeholder="Enter a topic (e.g. photosynthesis, Python, jazz)" />
+            <select id="qCount" title="Number of questions">
+                <option value="3">3 questions</option>
+                <option value="5" selected>5 questions</option>
+                <option value="7">7 questions</option>
+            </select>
+            <button id="startBtn">Start Quiz</button>
+        </div>
+
+        <div id="quizArea" class="hidden">
+            <div class="progress" id="progressText">Question 1 / 5</div>
+            <div class="question" id="questionText">Question text</div>
+            <div class="options" id="optionsArea"></div>
+            <div class="small" style="margin-top:10px">Click any option to submit and advance.</div>
+        </div>
+
+        <div id="resultArea" class="hidden results"></div>
+    </div>
+
+    <script>
+        // Minimal client-side quiz generator that uses safe, generic templates.
+        const questionTemplates = [
+            'Which statement best describes "{topic}"?',
+            'Which of the following is most closely associated with "{topic}"?',
+            'Which field would most likely include "{topic}"?',
+            'Which of these could be considered an example of "{topic}"?',
+            'Which item is least related to "{topic}"?'
+        ];
+
+        function shuffle(arr){
+            for(let i=arr.length-1;i>0;i--){
+                const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];
+            }
+            return arr;
+        }
+
+        function makeQuestions(topic,count){
+            const qs=[];
+            const used = new Set();
+            const templates = [...questionTemplates];
+            while(qs.length < count){
+                const t = templates[Math.floor(Math.random()*templates.length)];
+                if(used.has(t) && templates.length > count) continue;
+                used.add(t);
+                const qText = t.replace('{topic}', topic);
+                // Build 4 neutral options. One references the topic explicitly; the others are generic distractors.
+                const correct = `${topic}`;
+                const pool = [
+                    `${topic} — directly related`,
+                    `A concept often discussed with ${topic}`,
+                    `An unrelated concept`,
+                    `None of the above`
+                ];
+                const options = shuffle([...pool]);
+                qs.push({question: qText, options});
+            }
+            return qs;
+        }
+
+        const startBtn = document.getElementById('startBtn');
+        const topicInput = document.getElementById('topicInput');
+        const qCount = document.getElementById('qCount');
+        const startArea = document.getElementById('startArea');
+        const quizArea = document.getElementById('quizArea');
+        const questionText = document.getElementById('questionText');
+        const optionsArea = document.getElementById('optionsArea');
+        const progressText = document.getElementById('progressText');
+        const resultArea = document.getElementById('resultArea');
+
+        let state = {topic:'', questions:[], index:0, answers:[]};
+
+        startBtn.addEventListener('click', ()=>{
+            const topic = (topicInput.value||'').trim();
+            if(!topic){ topicInput.focus(); return; }
+            const count = parseInt(qCount.value,10)||5;
+            state.topic = topic;
+            state.questions = makeQuestions(topic, count);
+            state.index = 0; state.answers = [];
+            startArea.classList.add('hidden');
+            resultArea.classList.add('hidden');
+            quizArea.classList.remove('hidden');
+            renderQuestion();
+        });
+
+        function renderQuestion(){
+            const i = state.index;
+            const total = state.questions.length;
+            progressText.textContent = `Question ${i+1} / ${total}`;
+            const q = state.questions[i];
+            questionText.textContent = q.question;
+            optionsArea.innerHTML = '';
+            q.options.forEach((opt, idx)=>{
+                const btn = document.createElement('div');
+                btn.className = 'opt';
+                btn.tabIndex = 0;
+                btn.textContent = opt;
+                btn.addEventListener('click', ()=>selectOption(idx));
+                btn.addEventListener('keydown', (e)=>{ if(e.key === 'Enter' || e.key === ' ') selectOption(idx); });
+                optionsArea.appendChild(btn);
+            });
+        }
+
+        function selectOption(optIndex){
+            const i = state.index;
+            const q = state.questions[i];
+            const selected = q.options[optIndex];
+            state.answers.push({question:q.question, selected});
+            // Briefly highlight selection
+            const children = Array.from(optionsArea.children);
+            children.forEach((c, idx)=>{ c.classList.toggle('selected', idx===optIndex); });
+            // advance after short delay
+            setTimeout(()=>{
+                state.index++;
+                if(state.index >= state.questions.length) showResults();
+                else renderQuestion();
+            }, 320);
+        }
+
+        function showResults(){
+            quizArea.classList.add('hidden');
+            resultArea.classList.remove('hidden');
+            resultArea.innerHTML = '';
+            const h = document.createElement('h2'); h.textContent = 'Results';
+            resultArea.appendChild(h);
+            const p = document.createElement('div'); p.className='small'; p.textContent = `Topic: ${state.topic}`;
+            resultArea.appendChild(p);
+            const list = document.createElement('ol');
+            state.answers.forEach(a=>{
+                const li = document.createElement('li');
+                li.innerHTML = `<div style="margin-bottom:6px"><strong>${a.selected}</strong></div><div class="small">${a.question}</div>`;
+                list.appendChild(li);
+            });
+            resultArea.appendChild(list);
+            const again = document.createElement('div');
+            again.style.marginTop='12px';
+            const restart = document.createElement('button'); restart.textContent='Take another quiz';
+            restart.addEventListener('click', ()=>{ startArea.classList.remove('hidden'); resultArea.classList.add('hidden'); topicInput.focus(); });
+            again.appendChild(restart);
+            resultArea.appendChild(again);
+        }
+    </script>
+</body>
+</html>

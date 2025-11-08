@@ -1,7 +1,7 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, render_template
 
 app = Flask("truecopilot")
 
 @app.route("/")
 def index():
-    return jsonify({"message": "TrueCopilot running."}), 200
+    return render_template('index.html')
