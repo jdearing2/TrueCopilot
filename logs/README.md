@@ -1,0 +1,1 @@
+this folder is meant for logs and is not meant to have files developed inside of it
