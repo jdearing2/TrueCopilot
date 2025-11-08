@@ -3,91 +3,403 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Study Tree — True Copilot</title>
+    <title>Space Journey — True Copilot</title>
     <style>
-        body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue',Arial;margin:0;padding:20px;background:#f6f8fa}
-        .container{max-width:1200px;margin:0 auto}
-        .card{background:white;border-radius:8px;box-shadow:0 6px 18px rgba(20,30,40,0.08);padding:24px;margin-bottom:20px}
-        h1{margin:0 0 12px;font-size:24px;color:#1e293b}
-        h2{margin:0 0 16px;font-size:20px;color:#334155}
-        h3{margin:16px 0 8px;font-size:18px;color:#475569;border-left:4px solid #2563eb;padding-left:12px}
-        .controls{display:flex;gap:8px;align-items:center;margin-bottom:18px;flex-wrap:wrap}
-        input[type="text"]{flex:1;min-width:200px;padding:10px 12px;border:1px solid #dfe6ee;border-radius:6px;font-size:15px}
-        select{padding:10px 12px;border:1px solid #dfe6ee;border-radius:6px;font-size:15px;background:white}
-        button{padding:10px 20px;border-radius:6px;border:0;background:#2563eb;color:white;cursor:pointer;font-size:15px;font-weight:500;transition:background 0.2s}
-        button:hover{background:#1d4ed8}
-        button:disabled{background:#94a3b8;cursor:not-allowed}
-        .hidden{display:none}
-        .loading{text-align:center;padding:40px;color:#64748b}
-        .spinner{border:3px solid #e2e8f0;border-top:3px solid #2563eb;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto 16px}
-        @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
-        .error{background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;padding:12px;border-radius:6px;margin-bottom:16px}
-        .subtopic{margin-bottom:32px;padding:20px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0}
-        .question-card{margin:16px 0;padding:16px;background:white;border-radius:6px;border:1px solid #e2e8f0}
-        .question-text{font-weight:500;margin-bottom:12px;color:#1e293b;font-size:16px}
-        .options{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
-        .opt{padding:12px;border-radius:6px;border:2px solid #e3e8ef;background:white;cursor:pointer;transition:all .15s;font-size:14px}
-        .opt:hover{transform:translateY(-2px);box-shadow:0 4px 8px rgba(33,47,77,0.08);border-color:#cbd5e1}
-        .opt.selected{background:#eef2ff;border-color:#2563eb}
-        .opt.correct{background:#d1fae5;border-color:#10b981}
-        .opt.incorrect{background:#fee2e2;border-color:#ef4444}
-        .explanation{margin-top:12px;padding:12px;background:#f0f9ff;border-left:4px solid #0ea5e9;border-radius:4px;font-size:14px;color:#0c4a6e;display:none}
-        .explanation.show{display:block}
-        .small{font-size:13px;color:#64748b}
-        .stats{margin-top:16px;padding:12px;background:#f1f5f9;border-radius:6px;font-size:14px;color:#475569}
+        * { box-sizing: border-box; }
+        body {
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Ubuntu, 'Helvetica Neue', Arial;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1a2e 50%, #16213e 100%);
+            color: #e0e7ff;
+            min-height: 100vh;
+            position: relative;
+            overflow-x: hidden;
+        }
+        /* Stars background */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                radial-gradient(2px 2px at 20% 30%, white, transparent),
+                radial-gradient(2px 2px at 60% 70%, white, transparent),
+                radial-gradient(1px 1px at 50% 50%, white, transparent),
+                radial-gradient(1px 1px at 80% 10%, white, transparent),
+                radial-gradient(2px 2px at 90% 40%, white, transparent),
+                radial-gradient(1px 1px at 33% 60%, white, transparent),
+                radial-gradient(1px 1px at 10% 80%, white, transparent);
+            background-size: 200% 200%;
+            animation: stars 20s linear infinite;
+            pointer-events: none;
+            opacity: 0.6;
+        }
+        @keyframes stars {
+            from { transform: translateY(0); }
+            to { transform: translateY(-100px); }
+        }
+        .container { max-width: 1200px; margin: 0 auto; position: relative; z-index: 1; }
+        .card {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+            padding: 32px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(148, 163, 184, 0.1);
+        }
+        h1 {
+            margin: 0 0 8px;
+            font-size: 32px;
+            color: #fbbf24;
+            text-shadow: 0 0 20px rgba(251, 191, 36, 0.5);
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        h2 { margin: 0 0 16px; font-size: 24px; color: #e0e7ff; }
+        .controls {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        input[type="text"] {
+            flex: 1;
+            min-width: 200px;
+            padding: 12px 16px;
+            border: 2px solid rgba(148, 163, 184, 0.2);
+            border-radius: 8px;
+            font-size: 15px;
+            background: rgba(30, 41, 59, 0.6);
+            color: #e0e7ff;
+            transition: all 0.3s;
+        }
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        select {
+            padding: 12px 16px;
+            border: 2px solid rgba(148, 163, 184, 0.2);
+            border-radius: 8px;
+            font-size: 15px;
+            background: rgba(30, 41, 59, 0.6);
+            color: #e0e7ff;
+        }
+        button {
+            padding: 12px 24px;
+            border-radius: 8px;
+            border: 0;
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 600;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+        }
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+        }
+        button:disabled {
+            background: #475569;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        .hidden { display: none; }
+        .loading {
+            text-align: center;
+            padding: 60px 20px;
+            color: #cbd5e1;
+        }
+        .spinner {
+            border: 4px solid rgba(59, 130, 246, 0.2);
+            border-top: 4px solid #3b82f6;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .error {
+            background: rgba(239, 68, 68, 0.2);
+            border: 2px solid rgba(239, 68, 68, 0.5);
+            color: #fca5a5;
+            padding: 16px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        /* Planet Journey UI */
+        .journey-container {
+            text-align: center;
+        }
+        .planet-progress {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 40px 0;
+            padding: 20px;
+            background: rgba(30, 41, 59, 0.4);
+            border-radius: 12px;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+        .planet-dot {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 12px;
+            color: white;
+            position: relative;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+        .planet-dot.locked {
+            background: #334155;
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        .planet-dot.current {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.6);
+            transform: scale(1.2);
+            z-index: 2;
+        }
+        .planet-dot.completed {
+            background: linear-gradient(135deg, #10b981, #059669);
+            box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+        }
+        .planet-dot.final {
+            background: linear-gradient(135deg, #fbbf24, #f59e0b);
+            box-shadow: 0 0 25px rgba(251, 191, 36, 0.6);
+        }
+        .planet-dot.final.completed {
+            box-shadow: 0 0 30px rgba(251, 191, 36, 0.8);
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+        
+        .current-planet {
+            margin: 40px 0;
+            padding: 32px;
+            background: rgba(30, 41, 59, 0.6);
+            border-radius: 16px;
+            border: 2px solid rgba(59, 130, 246, 0.3);
+        }
+        .planet-header {
+            font-size: 28px;
+            font-weight: bold;
+            margin-bottom: 8px;
+            color: #fbbf24;
+        }
+        .planet-subtitle {
+            font-size: 16px;
+            color: #cbd5e1;
+            margin-bottom: 24px;
+        }
+        .question-card {
+            margin: 20px 0;
+            padding: 24px;
+            background: rgba(15, 23, 42, 0.8);
+            border-radius: 12px;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+        }
+        .question-text {
+            font-weight: 600;
+            margin-bottom: 20px;
+            color: #e0e7ff;
+            font-size: 18px;
+        }
+        .options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-top: 16px;
+        }
+        .opt {
+            padding: 16px;
+            border-radius: 8px;
+            border: 2px solid rgba(148, 163, 184, 0.3);
+            background: rgba(30, 41, 59, 0.6);
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 15px;
+            color: #e0e7ff;
+        }
+        .opt:hover:not(.answered) {
+            transform: translateY(-2px);
+            border-color: #3b82f6;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+        }
+        .opt.selected {
+            background: rgba(59, 130, 246, 0.2);
+            border-color: #3b82f6;
+        }
+        .opt.correct {
+            background: rgba(16, 185, 129, 0.2);
+            border-color: #10b981;
+        }
+        .opt.incorrect {
+            background: rgba(239, 68, 68, 0.2);
+            border-color: #ef4444;
+        }
+        .opt.answered {
+            cursor: not-allowed;
+        }
+        .explanation {
+            margin-top: 16px;
+            padding: 16px;
+            background: rgba(59, 130, 246, 0.1);
+            border-left: 4px solid #3b82f6;
+            border-radius: 6px;
+            font-size: 14px;
+            color: #cbd5e1;
+            display: none;
+        }
+        .explanation.show {
+            display: block;
+        }
+        .next-planet-btn {
+            margin-top: 24px;
+            padding: 14px 32px;
+            font-size: 16px;
+            background: linear-gradient(135deg, #10b981, #059669);
+            display: none;
+        }
+        .next-planet-btn.show {
+            display: inline-block;
+        }
+        .mission-complete {
+            text-align: center;
+            padding: 60px 20px;
+            background: rgba(251, 191, 36, 0.1);
+            border: 2px solid rgba(251, 191, 36, 0.3);
+            border-radius: 16px;
+            margin-top: 40px;
+        }
+        .mission-complete h2 {
+            font-size: 36px;
+            color: #fbbf24;
+            margin-bottom: 16px;
+            text-shadow: 0 0 20px rgba(251, 191, 36, 0.5);
+        }
+        .small { font-size: 14px; color: #94a3b8; }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="card">
-            <h1>Study Tree Generator</h1>
-            <div class="small">Enter a topic to generate a structured study tree with sub topics and questions</div>
+            <h1>🚀 Space Journey Study Mission</h1>
+            <div class="small">Travel from Pluto to the Sun by mastering each planet's questions. Save the day!</div>
 
             <div class="controls" id="startArea">
-                <input id="topicInput" type="text" placeholder="Enter a topic (e.g. photosynthesis, Python, World War II)" />
-                <select id="qCount" title="Questions per sub topic">
-                    <option value="2">2 questions</option>
-                    <option value="3" selected>3 questions</option>
+                <input id="topicInput" type="text" placeholder="Enter a topic to study (e.g. Python, Photosynthesis, World War II)" />
+                <select id="qCount" title="Questions per planet">
+                    <option value="2" selected>2 questions</option>
+                    <option value="3">3 questions</option>
                     <option value="4">4 questions</option>
                     <option value="5">5 questions</option>
                 </select>
-                <button id="generateBtn">Generate Study Tree</button>
+                <button id="generateBtn">Launch Mission</button>
             </div>
 
             <div id="errorArea" class="hidden"></div>
             <div id="loadingArea" class="hidden">
                 <div class="loading">
                     <div class="spinner"></div>
-                    <div>Generating study tree... This may take a moment.</div>
+                    <div>Preparing your space journey... This may take a moment.</div>
                 </div>
             </div>
         </div>
 
-        <div id="studyTreeArea" class="hidden">
-            <div class="card">
-                <h2 id="topicTitle"></h2>
-                <div id="studyTreeContent"></div>
+        <div id="journeyArea" class="hidden">
+            <div class="card journey-container">
+                <h2 id="missionTitle"></h2>
+                <div id="planetProgress" class="planet-progress"></div>
+                
+                <div id="currentPlanetArea" class="current-planet">
+                    <div class="planet-header" id="planetName"></div>
+                    <div class="planet-subtitle" id="planetSubtitle"></div>
+                    <div id="planetQuestions"></div>
+                    <button id="nextPlanetBtn" class="next-planet-btn">Travel to Next Planet →</button>
+                </div>
+                
+                <div id="missionComplete" class="mission-complete hidden">
+                    <h2>🌟 Mission Complete! 🌟</h2>
+                    <p style="font-size: 18px; color: #cbd5e1; margin: 16px 0;" id="missionCompleteText">
+                        You've reached the Sun and saved the day! You've mastered all 9 planets.
+                    </p>
+                    <div id="returnTripSection" style="margin-top: 24px;"></div>
+                    <button onclick="location.reload()" style="margin-top: 20px;">
+                        Start New Mission
+                    </button>
+                </div>
             </div>
         </div>
     </div>
 
     <script>
+        const PLANETS = [
+            { name: 'Pluto', emoji: '🪐', order: 9 },
+            { name: 'Neptune', emoji: '🔵', order: 8 },
+            { name: 'Uranus', emoji: '🔷', order: 7 },
+            { name: 'Saturn', emoji: '🪐', order: 6 },
+            { name: 'Jupiter', emoji: '🟠', order: 5 },
+            { name: 'Mars', emoji: '🔴', order: 4 },
+            { name: 'Earth', emoji: '🌍', order: 3 },
+            { name: 'Venus', emoji: '🟡', order: 2 },
+            { name: 'Mercury', emoji: '⚪', order: 1 },
+            { name: 'Sun', emoji: '☀️', order: 0, isFinal: true }
+        ];
+
         const generateBtn = document.getElementById('generateBtn');
         const topicInput = document.getElementById('topicInput');
         const qCount = document.getElementById('qCount');
         const startArea = document.getElementById('startArea');
         const loadingArea = document.getElementById('loadingArea');
         const errorArea = document.getElementById('errorArea');
-        const studyTreeArea = document.getElementById('studyTreeArea');
-        const topicTitle = document.getElementById('topicTitle');
-        const studyTreeContent = document.getElementById('studyTreeContent');
+        const journeyArea = document.getElementById('journeyArea');
+        const missionTitle = document.getElementById('missionTitle');
+        const planetProgress = document.getElementById('planetProgress');
+        const currentPlanetArea = document.getElementById('currentPlanetArea');
+        const planetName = document.getElementById('planetName');
+        const planetSubtitle = document.getElementById('planetSubtitle');
+        const planetQuestions = document.getElementById('planetQuestions');
+        const nextPlanetBtn = document.getElementById('nextPlanetBtn');
+        const missionComplete = document.getElementById('missionComplete');
 
         let currentTree = null;
+        let currentPlanetIndex = 0;
+        let planetStates = []; // Track completion state for each planet
+        let wrongAnswers = []; // Track questions answered incorrectly: [{planetIndex, planetName, subtopicName, question, questionIndex}]
+        let isReturnTrip = false; // Track if we're in return trip mode
+        let returnTripIndex = 0; // Current index in wrongAnswers array for return trip
 
         generateBtn.addEventListener('click', generateStudyTree);
         topicInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') generateStudyTree();
         });
+
 
         async function generateStudyTree() {
             const topic = (topicInput.value || '').trim();
@@ -97,21 +409,18 @@
                 return;
             }
 
-            const questionsPerSubtopic = parseInt(qCount.value, 10) || 3;
+            const questionsPerSubtopic = parseInt(qCount.value, 10) || 2;
 
-            // Show loading state
             startArea.classList.add('hidden');
             errorArea.classList.add('hidden');
-            studyTreeArea.classList.add('hidden');
+            journeyArea.classList.add('hidden');
             loadingArea.classList.remove('hidden');
             generateBtn.disabled = true;
 
             try {
                 const response = await fetch('/api/generate-study', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         topic: topic,
                         questions_per_subtopic: questionsPerSubtopic
@@ -124,8 +433,27 @@
                     throw new Error(data.error || 'Failed to generate study tree');
                 }
 
+                if (!data.subtopics || data.subtopics.length === 0) {
+                    throw new Error('No subtopics generated. Please try again.');
+                }
+
+                // Ensure we have exactly 9 subtopics
+                if (data.subtopics.length < 9) {
+                    throw new Error(`Expected 9 subtopics (one per planet), but got ${data.subtopics.length}. Please try again.`);
+                }
+
                 currentTree = data;
-                displayStudyTree(data);
+                currentPlanetIndex = 0;
+                planetStates = new Array(9).fill(false); // 9 planets, all locked initially
+                planetStates[0] = true; // First planet (Pluto) is unlocked
+                wrongAnswers = []; // Reset wrong answers
+                isReturnTrip = false; // Reset return trip mode
+                returnTripIndex = 0;
+
+                missionTitle.textContent = `Mission: Master "${data.topic}"`;
+                displayPlanetProgress();
+                displayCurrentPlanet();
+                journeyArea.classList.remove('hidden');
 
             } catch (error) {
                 console.error('Error:', error);
@@ -142,71 +470,143 @@
             errorArea.classList.remove('hidden');
         }
 
-        function displayStudyTree(tree) {
-            topicTitle.textContent = `Study Tree: ${tree.topic}`;
-            studyTreeContent.innerHTML = '';
+        function displayPlanetProgress() {
+            planetProgress.innerHTML = '';
+            
+            // Display planets in reverse order (Pluto to Sun)
+            for (let i = 0; i < 9; i++) {
+                const planet = PLANETS[i];
+                const dot = document.createElement('div');
+                dot.className = 'planet-dot';
+                dot.textContent = planet.emoji;
+                dot.title = `${planet.name} - ${currentTree.subtopics[i]?.name || 'Loading...'}`;
+                
+                if (i < currentPlanetIndex) {
+                    dot.classList.add('completed');
+                } else if (i === currentPlanetIndex) {
+                    dot.classList.add('current');
+                } else {
+                    dot.classList.add('locked');
+                }
+                
+                planetProgress.appendChild(dot);
+            }
+            
+            // Add Sun as final destination
+            const sun = PLANETS[9];
+            const sunDot = document.createElement('div');
+            sunDot.className = 'planet-dot final';
+            sunDot.textContent = sun.emoji;
+            sunDot.title = sun.name;
+            if (currentPlanetIndex >= 9) {
+                sunDot.classList.add('completed');
+            } else if (currentPlanetIndex === 9) {
+                sunDot.classList.add('current');
+            } else {
+                sunDot.classList.add('locked');
+            }
+            planetProgress.appendChild(sunDot);
+        }
 
-            if (!tree.subtopics || tree.subtopics.length === 0) {
-                studyTreeContent.innerHTML = '<p>No sub topics generated.</p>';
-                studyTreeArea.classList.remove('hidden');
+        function displayCurrentPlanet() {
+            if (isReturnTrip) {
+                // Return trip mode - show wrong answers
+                displayReturnTripQuestion();
+                return;
+            }
+            
+            if (currentPlanetIndex >= 9) {
+                // Mission complete - reached the Sun!
+                currentPlanetArea.classList.add('hidden');
+                missionComplete.classList.remove('hidden');
+                showMissionComplete();
                 return;
             }
 
-            tree.subtopics.forEach((subtopic, subtopicIndex) => {
-                const subtopicDiv = document.createElement('div');
-                subtopicDiv.className = 'subtopic';
+            currentPlanetArea.classList.remove('hidden');
+            missionComplete.classList.add('hidden');
 
-                const subtopicHeader = document.createElement('h3');
-                subtopicHeader.textContent = `${subtopicIndex + 1}. ${subtopic.name}`;
-                subtopicDiv.appendChild(subtopicHeader);
+            const planet = PLANETS[currentPlanetIndex];
+            const subtopic = currentTree.subtopics[currentPlanetIndex];
 
-                if (!subtopic.questions || subtopic.questions.length === 0) {
-                    const noQuestions = document.createElement('p');
-                    noQuestions.className = 'small';
-                    noQuestions.textContent = 'No questions generated for this sub topic.';
-                    subtopicDiv.appendChild(noQuestions);
-                } else {
-                    subtopic.questions.forEach((question, questionIndex) => {
-                        const questionCard = createQuestionCard(question, questionIndex);
-                        subtopicDiv.appendChild(questionCard);
-                    });
-                }
+            planetName.textContent = `${planet.emoji} ${planet.name}`;
+            planetSubtitle.textContent = subtopic.name;
+            planetQuestions.innerHTML = '';
 
-                studyTreeContent.appendChild(subtopicDiv);
+            if (!subtopic.questions || subtopic.questions.length === 0) {
+                planetQuestions.innerHTML = '<p class="small">No questions available for this planet.</p>';
+                nextPlanetBtn.classList.add('show');
+                return;
+            }
+
+            let answeredCount = 0;
+            const totalQuestions = subtopic.questions.length;
+
+            subtopic.questions.forEach((question, questionIndex) => {
+                const questionCard = createQuestionCard(question, questionIndex, currentPlanetIndex, () => {
+                    answeredCount++;
+                    if (answeredCount === totalQuestions) {
+                        // All questions answered, unlock next planet
+                        nextPlanetBtn.classList.add('show');
+                        if (currentPlanetIndex < 8) {
+                            planetStates[currentPlanetIndex + 1] = true;
+                        }
+                    }
+                });
+                planetQuestions.appendChild(questionCard);
             });
 
-            studyTreeArea.classList.remove('hidden');
+            displayPlanetProgress();
         }
 
-        function createQuestionCard(question, questionIndex) {
+        function createQuestionCard(question, questionIndex, planetIndex, onAllAnswered) {
             const card = document.createElement('div');
             card.className = 'question-card';
 
             const questionText = document.createElement('div');
             questionText.className = 'question-text';
-            questionText.textContent = `Q${questionIndex + 1}: ${question.question}`;
+            questionText.textContent = `Question ${questionIndex + 1}: ${question.question}`;
             card.appendChild(questionText);
 
             const optionsDiv = document.createElement('div');
             optionsDiv.className = 'options';
 
             let selectedIndex = null;
+            let isAnswered = false;
 
             question.options.forEach((option, optIndex) => {
                 const opt = document.createElement('div');
                 opt.className = 'opt';
                 opt.textContent = option;
-                opt.dataset.index = optIndex;
 
                 opt.addEventListener('click', () => {
-                    if (selectedIndex !== null) return; // Already answered
+                    if (isAnswered) return;
 
                     selectedIndex = optIndex;
+                    isAnswered = true;
                     const isCorrect = optIndex === question.correct_index;
+
+                    // Track wrong answers
+                    if (!isCorrect && !isReturnTrip) {
+                        const planet = PLANETS[planetIndex];
+                        const subtopic = currentTree.subtopics[planetIndex];
+                        wrongAnswers.push({
+                            planetIndex: planetIndex,
+                            planetName: planet.name,
+                            planetEmoji: planet.emoji,
+                            subtopicName: subtopic.name,
+                            question: question,
+                            questionIndex: questionIndex
+                        });
+                    }
+
+                    // Mark all options as answered
+                    Array.from(optionsDiv.children).forEach((child) => {
+                        child.classList.add('answered');
+                    });
 
                     // Update all options
                     Array.from(optionsDiv.children).forEach((child, idx) => {
-                        child.classList.remove('selected', 'correct', 'incorrect');
                         if (idx === question.correct_index) {
                             child.classList.add('correct');
                         } else if (idx === optIndex && !isCorrect) {
@@ -216,6 +616,11 @@
 
                     // Show explanation
                     explanationDiv.classList.add('show');
+                    
+                    // Check if all questions are answered
+                    if (onAllAnswered) {
+                        setTimeout(onAllAnswered, 100);
+                    }
                 });
 
                 optionsDiv.appendChild(opt);
@@ -230,6 +635,82 @@
 
             return card;
         }
+
+        function showMissionComplete() {
+            const missionCompleteText = document.getElementById('missionCompleteText');
+            const returnTripSection = document.getElementById('returnTripSection');
+            
+            if (wrongAnswers.length === 0) {
+                missionCompleteText.textContent = "You've reached the Sun and saved the day! Perfect score - you mastered all questions!";
+                returnTripSection.innerHTML = '';
+            } else {
+                missionCompleteText.textContent = `You've reached the Sun and saved the day! You got ${wrongAnswers.length} question${wrongAnswers.length === 1 ? '' : 's'} wrong. Review them on a return trip?`;
+                returnTripSection.innerHTML = `
+                    <p style="font-size: 16px; color: #cbd5e1; margin-bottom: 16px;">
+                        You missed ${wrongAnswers.length} question${wrongAnswers.length === 1 ? '' : 's'} across ${new Set(wrongAnswers.map(wa => wa.planetIndex)).size} planet${new Set(wrongAnswers.map(wa => wa.planetIndex)).size === 1 ? '' : 's'}.
+                    </p>
+                    <button id="startReturnTripBtn" style="padding: 14px 32px; font-size: 16px; background: linear-gradient(135deg, #f59e0b, #d97706); border: 0; border-radius: 8px; color: white; cursor: pointer; font-weight: 600;">
+                        🚀 Start Return Trip
+                    </button>
+                `;
+                document.getElementById('startReturnTripBtn').addEventListener('click', startReturnTrip);
+            }
+        }
+
+        function startReturnTrip() {
+            isReturnTrip = true;
+            returnTripIndex = 0;
+            currentPlanetArea.classList.remove('hidden');
+            missionComplete.classList.add('hidden');
+            displayReturnTripQuestion();
+        }
+
+        function displayReturnTripQuestion() {
+            if (returnTripIndex >= wrongAnswers.length) {
+                // Return trip complete!
+                currentPlanetArea.classList.add('hidden');
+                missionComplete.classList.remove('hidden');
+                const missionCompleteText = document.getElementById('missionCompleteText');
+                const returnTripSection = document.getElementById('returnTripSection');
+                missionCompleteText.textContent = "🌟 Return Trip Complete! 🌟 You've reviewed all the questions you missed.";
+                returnTripSection.innerHTML = '<p style="font-size: 16px; color: #cbd5e1; margin: 16px 0;">Great job reviewing! You\'re now ready for your next mission.</p>';
+                return;
+            }
+
+            const wrongAnswer = wrongAnswers[returnTripIndex];
+            const planet = PLANETS[wrongAnswer.planetIndex];
+
+            planetName.textContent = `${planet.emoji} ${planet.name} (Return Trip)`;
+            planetSubtitle.textContent = `${wrongAnswer.subtopicName} - Review Question ${returnTripIndex + 1} of ${wrongAnswers.length}`;
+            planetQuestions.innerHTML = '';
+
+            const questionCard = createQuestionCard(
+                wrongAnswer.question,
+                wrongAnswer.questionIndex,
+                wrongAnswer.planetIndex,
+                () => {
+                    // Question answered in return trip
+                    nextPlanetBtn.classList.add('show');
+                    nextPlanetBtn.textContent = returnTripIndex < wrongAnswers.length - 1 ? 'Next Review Question →' : 'Complete Return Trip →';
+                }
+            );
+            planetQuestions.appendChild(questionCard);
+
+            nextPlanetBtn.classList.remove('show');
+            nextPlanetBtn.textContent = 'Next Review Question →';
+        }
+
+        nextPlanetBtn.addEventListener('click', () => {
+            if (isReturnTrip) {
+                returnTripIndex++;
+                displayReturnTripQuestion();
+            } else {
+                if (currentPlanetIndex < PLANETS.length - 1) {
+                    currentPlanetIndex++;
+                    displayCurrentPlanet();
+                }
+            }
+        });
     </script>
 </body>
 </html>
