@@ -3,170 +3,232 @@
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
-    <title>Topic Quiz — True Copilot</title>
+    <title>Study Tree — True Copilot</title>
     <style>
-        body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue',Arial;margin:0;padding:0;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f6f8fa}
-        .card{background:white;border-radius:8px;box-shadow:0 6px 18px rgba(20,30,40,0.08);width:720px;max-width:94%;padding:24px}
-        h1{margin:0 0 12px;font-size:20px}
-        .controls{display:flex;gap:8px;align-items:center;margin-bottom:18px}
-        input[type="text"]{flex:1;padding:10px 12px;border:1px solid #dfe6ee;border-radius:6px;font-size:15px}
-        button{padding:10px 14px;border-radius:6px;border:0;background:#2563eb;color:white;cursor:pointer}
+        body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,'Helvetica Neue',Arial;margin:0;padding:20px;background:#f6f8fa}
+        .container{max-width:1200px;margin:0 auto}
+        .card{background:white;border-radius:8px;box-shadow:0 6px 18px rgba(20,30,40,0.08);padding:24px;margin-bottom:20px}
+        h1{margin:0 0 12px;font-size:24px;color:#1e293b}
+        h2{margin:0 0 16px;font-size:20px;color:#334155}
+        h3{margin:16px 0 8px;font-size:18px;color:#475569;border-left:4px solid #2563eb;padding-left:12px}
+        .controls{display:flex;gap:8px;align-items:center;margin-bottom:18px;flex-wrap:wrap}
+        input[type="text"]{flex:1;min-width:200px;padding:10px 12px;border:1px solid #dfe6ee;border-radius:6px;font-size:15px}
+        select{padding:10px 12px;border:1px solid #dfe6ee;border-radius:6px;font-size:15px;background:white}
+        button{padding:10px 20px;border-radius:6px;border:0;background:#2563eb;color:white;cursor:pointer;font-size:15px;font-weight:500;transition:background 0.2s}
+        button:hover{background:#1d4ed8}
+        button:disabled{background:#94a3b8;cursor:not-allowed}
         .hidden{display:none}
-        .question{margin-top:8px;padding:14px;border-radius:6px;background:#fbfdff;border:1px solid #eef4ff}
+        .loading{text-align:center;padding:40px;color:#64748b}
+        .spinner{border:3px solid #e2e8f0;border-top:3px solid #2563eb;border-radius:50%;width:40px;height:40px;animation:spin 1s linear infinite;margin:0 auto 16px}
+        @keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+        .error{background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;padding:12px;border-radius:6px;margin-bottom:16px}
+        .subtopic{margin-bottom:32px;padding:20px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0}
+        .question-card{margin:16px 0;padding:16px;background:white;border-radius:6px;border:1px solid #e2e8f0}
+        .question-text{font-weight:500;margin-bottom:12px;color:#1e293b;font-size:16px}
         .options{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
-        .opt{padding:12px;border-radius:6px;border:1px solid #e3e8ef;background:white;cursor:pointer;transition:all .12s}
-        .opt:hover{transform:translateY(-2px);box-shadow:0 6px 12px rgba(33,47,77,0.06)}
-        .opt.selected{background:#eef2ff;border-color:#c7d2fe}
-        .progress{margin-top:14px;font-size:14px;color:#475569}
-        .results{margin-top:14px}
-        .small{font-size:13px;color:#6b7280}
+        .opt{padding:12px;border-radius:6px;border:2px solid #e3e8ef;background:white;cursor:pointer;transition:all .15s;font-size:14px}
+        .opt:hover{transform:translateY(-2px);box-shadow:0 4px 8px rgba(33,47,77,0.08);border-color:#cbd5e1}
+        .opt.selected{background:#eef2ff;border-color:#2563eb}
+        .opt.correct{background:#d1fae5;border-color:#10b981}
+        .opt.incorrect{background:#fee2e2;border-color:#ef4444}
+        .explanation{margin-top:12px;padding:12px;background:#f0f9ff;border-left:4px solid #0ea5e9;border-radius:4px;font-size:14px;color:#0c4a6e;display:none}
+        .explanation.show{display:block}
+        .small{font-size:13px;color:#64748b}
+        .stats{margin-top:16px;padding:12px;background:#f1f5f9;border-radius:6px;font-size:14px;color:#475569}
     </style>
 </head>
 <body>
-    <div class="card">
-        <h1>Quick Topic Quiz</h1>
-        <div class="small">Enter any topic and you'll be asked a short series of multiple-choice questions. Click one answer per question to proceed.</div>
+    <div class="container">
+        <div class="card">
+            <h1>Study Tree Generator</h1>
+            <div class="small">Enter a topic to generate a structured study tree with sub topics and questions</div>
 
-        <div class="controls" id="startArea">
-            <input id="topicInput" type="text" placeholder="Enter a topic (e.g. photosynthesis, Python, jazz)" />
-            <select id="qCount" title="Number of questions">
-                <option value="3">3 questions</option>
-                <option value="5" selected>5 questions</option>
-                <option value="7">7 questions</option>
-            </select>
-            <button id="startBtn">Start Quiz</button>
+            <div class="controls" id="startArea">
+                <input id="topicInput" type="text" placeholder="Enter a topic (e.g. photosynthesis, Python, World War II)" />
+                <select id="qCount" title="Questions per sub topic">
+                    <option value="2">2 questions</option>
+                    <option value="3" selected>3 questions</option>
+                    <option value="4">4 questions</option>
+                    <option value="5">5 questions</option>
+                </select>
+                <button id="generateBtn">Generate Study Tree</button>
+            </div>
+
+            <div id="errorArea" class="hidden"></div>
+            <div id="loadingArea" class="hidden">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <div>Generating study tree... This may take a moment.</div>
+                </div>
+            </div>
         </div>
 
-        <div id="quizArea" class="hidden">
-            <div class="progress" id="progressText">Question 1 / 5</div>
-            <div class="question" id="questionText">Question text</div>
-            <div class="options" id="optionsArea"></div>
-            <div class="small" style="margin-top:10px">Click any option to submit and advance.</div>
+        <div id="studyTreeArea" class="hidden">
+            <div class="card">
+                <h2 id="topicTitle"></h2>
+                <div id="studyTreeContent"></div>
+            </div>
         </div>
-
-        <div id="resultArea" class="hidden results"></div>
     </div>
 
     <script>
-        // Minimal client-side quiz generator that uses safe, generic templates.
-        const questionTemplates = [
-            'Which statement best describes "{topic}"?',
-            'Which of the following is most closely associated with "{topic}"?',
-            'Which field would most likely include "{topic}"?',
-            'Which of these could be considered an example of "{topic}"?',
-            'Which item is least related to "{topic}"?'
-        ];
-
-        function shuffle(arr){
-            for(let i=arr.length-1;i>0;i--){
-                const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]];
-            }
-            return arr;
-        }
-
-        function makeQuestions(topic,count){
-            const qs=[];
-            const used = new Set();
-            const templates = [...questionTemplates];
-            while(qs.length < count){
-                const t = templates[Math.floor(Math.random()*templates.length)];
-                if(used.has(t) && templates.length > count) continue;
-                used.add(t);
-                const qText = t.replace('{topic}', topic);
-                // Build 4 neutral options. One references the topic explicitly; the others are generic distractors.
-                const correct = `${topic}`;
-                const pool = [
-                    `${topic} — directly related`,
-                    `A concept often discussed with ${topic}`,
-                    `An unrelated concept`,
-                    `None of the above`
-                ];
-                const options = shuffle([...pool]);
-                qs.push({question: qText, options});
-            }
-            return qs;
-        }
-
-        const startBtn = document.getElementById('startBtn');
+        const generateBtn = document.getElementById('generateBtn');
         const topicInput = document.getElementById('topicInput');
         const qCount = document.getElementById('qCount');
         const startArea = document.getElementById('startArea');
-        const quizArea = document.getElementById('quizArea');
-        const questionText = document.getElementById('questionText');
-        const optionsArea = document.getElementById('optionsArea');
-        const progressText = document.getElementById('progressText');
-        const resultArea = document.getElementById('resultArea');
+        const loadingArea = document.getElementById('loadingArea');
+        const errorArea = document.getElementById('errorArea');
+        const studyTreeArea = document.getElementById('studyTreeArea');
+        const topicTitle = document.getElementById('topicTitle');
+        const studyTreeContent = document.getElementById('studyTreeContent');
 
-        let state = {topic:'', questions:[], index:0, answers:[]};
+        let currentTree = null;
 
-        startBtn.addEventListener('click', ()=>{
-            const topic = (topicInput.value||'').trim();
-            if(!topic){ topicInput.focus(); return; }
-            const count = parseInt(qCount.value,10)||5;
-            state.topic = topic;
-            state.questions = makeQuestions(topic, count);
-            state.index = 0; state.answers = [];
-            startArea.classList.add('hidden');
-            resultArea.classList.add('hidden');
-            quizArea.classList.remove('hidden');
-            renderQuestion();
+        generateBtn.addEventListener('click', generateStudyTree);
+        topicInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') generateStudyTree();
         });
 
-        function renderQuestion(){
-            const i = state.index;
-            const total = state.questions.length;
-            progressText.textContent = `Question ${i+1} / ${total}`;
-            const q = state.questions[i];
-            questionText.textContent = q.question;
-            optionsArea.innerHTML = '';
-            q.options.forEach((opt, idx)=>{
-                const btn = document.createElement('div');
-                btn.className = 'opt';
-                btn.tabIndex = 0;
-                btn.textContent = opt;
-                btn.addEventListener('click', ()=>selectOption(idx));
-                btn.addEventListener('keydown', (e)=>{ if(e.key === 'Enter' || e.key === ' ') selectOption(idx); });
-                optionsArea.appendChild(btn);
-            });
+        async function generateStudyTree() {
+            const topic = (topicInput.value || '').trim();
+            if (!topic) {
+                topicInput.focus();
+                showError('Please enter a topic');
+                return;
+            }
+
+            const questionsPerSubtopic = parseInt(qCount.value, 10) || 3;
+
+            // Show loading state
+            startArea.classList.add('hidden');
+            errorArea.classList.add('hidden');
+            studyTreeArea.classList.add('hidden');
+            loadingArea.classList.remove('hidden');
+            generateBtn.disabled = true;
+
+            try {
+                const response = await fetch('/api/generate-study', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        topic: topic,
+                        questions_per_subtopic: questionsPerSubtopic
+                    })
+                });
+
+                const data = await response.json();
+
+                if (!response.ok) {
+                    throw new Error(data.error || 'Failed to generate study tree');
+                }
+
+                currentTree = data;
+                displayStudyTree(data);
+
+            } catch (error) {
+                console.error('Error:', error);
+                showError(error.message || 'An error occurred while generating the study tree');
+            } finally {
+                loadingArea.classList.add('hidden');
+                generateBtn.disabled = false;
+            }
         }
 
-        function selectOption(optIndex){
-            const i = state.index;
-            const q = state.questions[i];
-            const selected = q.options[optIndex];
-            state.answers.push({question:q.question, selected});
-            // Briefly highlight selection
-            const children = Array.from(optionsArea.children);
-            children.forEach((c, idx)=>{ c.classList.toggle('selected', idx===optIndex); });
-            // advance after short delay
-            setTimeout(()=>{
-                state.index++;
-                if(state.index >= state.questions.length) showResults();
-                else renderQuestion();
-            }, 320);
+        function showError(message) {
+            errorArea.textContent = message;
+            errorArea.className = 'error';
+            errorArea.classList.remove('hidden');
         }
 
-        function showResults(){
-            quizArea.classList.add('hidden');
-            resultArea.classList.remove('hidden');
-            resultArea.innerHTML = '';
-            const h = document.createElement('h2'); h.textContent = 'Results';
-            resultArea.appendChild(h);
-            const p = document.createElement('div'); p.className='small'; p.textContent = `Topic: ${state.topic}`;
-            resultArea.appendChild(p);
-            const list = document.createElement('ol');
-            state.answers.forEach(a=>{
-                const li = document.createElement('li');
-                li.innerHTML = `<div style="margin-bottom:6px"><strong>${a.selected}</strong></div><div class="small">${a.question}</div>`;
-                list.appendChild(li);
+        function displayStudyTree(tree) {
+            topicTitle.textContent = `Study Tree: ${tree.topic}`;
+            studyTreeContent.innerHTML = '';
+
+            if (!tree.subtopics || tree.subtopics.length === 0) {
+                studyTreeContent.innerHTML = '<p>No sub topics generated.</p>';
+                studyTreeArea.classList.remove('hidden');
+                return;
+            }
+
+            tree.subtopics.forEach((subtopic, subtopicIndex) => {
+                const subtopicDiv = document.createElement('div');
+                subtopicDiv.className = 'subtopic';
+
+                const subtopicHeader = document.createElement('h3');
+                subtopicHeader.textContent = `${subtopicIndex + 1}. ${subtopic.name}`;
+                subtopicDiv.appendChild(subtopicHeader);
+
+                if (!subtopic.questions || subtopic.questions.length === 0) {
+                    const noQuestions = document.createElement('p');
+                    noQuestions.className = 'small';
+                    noQuestions.textContent = 'No questions generated for this sub topic.';
+                    subtopicDiv.appendChild(noQuestions);
+                } else {
+                    subtopic.questions.forEach((question, questionIndex) => {
+                        const questionCard = createQuestionCard(question, questionIndex);
+                        subtopicDiv.appendChild(questionCard);
+                    });
+                }
+
+                studyTreeContent.appendChild(subtopicDiv);
             });
-            resultArea.appendChild(list);
-            const again = document.createElement('div');
-            again.style.marginTop='12px';
-            const restart = document.createElement('button'); restart.textContent='Take another quiz';
-            restart.addEventListener('click', ()=>{ startArea.classList.remove('hidden'); resultArea.classList.add('hidden'); topicInput.focus(); });
-            again.appendChild(restart);
-            resultArea.appendChild(again);
+
+            studyTreeArea.classList.remove('hidden');
+        }
+
+        function createQuestionCard(question, questionIndex) {
+            const card = document.createElement('div');
+            card.className = 'question-card';
+
+            const questionText = document.createElement('div');
+            questionText.className = 'question-text';
+            questionText.textContent = `Q${questionIndex + 1}: ${question.question}`;
+            card.appendChild(questionText);
+
+            const optionsDiv = document.createElement('div');
+            optionsDiv.className = 'options';
+
+            let selectedIndex = null;
+
+            question.options.forEach((option, optIndex) => {
+                const opt = document.createElement('div');
+                opt.className = 'opt';
+                opt.textContent = option;
+                opt.dataset.index = optIndex;
+
+                opt.addEventListener('click', () => {
+                    if (selectedIndex !== null) return; // Already answered
+
+                    selectedIndex = optIndex;
+                    const isCorrect = optIndex === question.correct_index;
+
+                    // Update all options
+                    Array.from(optionsDiv.children).forEach((child, idx) => {
+                        child.classList.remove('selected', 'correct', 'incorrect');
+                        if (idx === question.correct_index) {
+                            child.classList.add('correct');
+                        } else if (idx === optIndex && !isCorrect) {
+                            child.classList.add('incorrect');
+                        }
+                    });
+
+                    // Show explanation
+                    explanationDiv.classList.add('show');
+                });
+
+                optionsDiv.appendChild(opt);
+            });
+
+            card.appendChild(optionsDiv);
+
+            const explanationDiv = document.createElement('div');
+            explanationDiv.className = 'explanation';
+            explanationDiv.innerHTML = `<strong>Explanation:</strong> ${question.explanation || 'This is the correct answer.'}`;
+            card.appendChild(explanationDiv);
+
+            return card;
         }
     </script>
 </body>
