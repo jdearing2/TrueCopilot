@@ -1,5 +1,6 @@
 import os
 import json
+import re
 import google.generativeai as genai
 from dotenv import load_dotenv
 
@@ -7,7 +8,8 @@ load_dotenv()
 
 # Configure Gemini API
 genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
-model = genai.GenerativeModel('gemini-pro')
+# Using gemini-2.5-flash for better rate limits and faster responses
+model = genai.GenerativeModel('gemini-2.5-flash')
 
 
 def get_subtopics(topic: str) -> list[str]:
@@ -20,9 +22,24 @@ def get_subtopics(topic: str) -> list[str]:
     Returns:
         List of sub topic strings
     """
-    prompt = f"""Generate 4-6 important sub topics for studying "{topic}". 
-Return ONLY a JSON array of strings, no other text. Each sub topic should be a key area within {topic}.
-Example format: ["Sub topic 1", "Sub topic 2", "Sub topic 3"]
+    prompt = f"""You are an expert educator. Generate 4-6 specific, concrete sub topics for studying "{topic}".
+
+CRITICAL REQUIREMENTS:
+- Each sub topic must be SPECIFIC and CONCRETE to "{topic}"
+- DO NOT use generic terms like "Basics", "Advanced Concepts", "Introduction", "Overview", "Applications"
+- Each sub topic should be a distinct, important area or concept within "{topic}"
+- Return EXACTLY 4-6 sub topics (prefer 5-6 if possible)
+
+Examples of GOOD sub topics:
+- For "Python": ["Lists and List Comprehensions", "Dictionary Operations", "Function Definitions and Scope", "Object-Oriented Programming", "File I/O Operations"]
+- For "World War II": ["The Battle of Normandy (D-Day)", "The Battle of Stalingrad", "The Pacific Theater Strategy", "The Holocaust", "The Atomic Bombings"]
+- For "Photosynthesis": ["Light-Dependent Reactions", "The Calvin Cycle", "Chlorophyll and Pigments", "C3 vs C4 Pathways", "Factors Affecting Photosynthesis Rate"]
+
+Examples of BAD sub topics (DO NOT USE):
+- "{topic} Basics", "{topic} Advanced", "Introduction to {topic}", "{topic} Overview"
+
+Return ONLY a valid JSON array of strings. No other text, no explanations, no markdown formatting.
+Format: ["Sub topic 1", "Sub topic 2", "Sub topic 3", "Sub topic 4", "Sub topic 5"]
 
 Sub topics for "{topic}":"""
 
@@ -30,22 +47,108 @@ Sub topics for "{topic}":"""
         response = model.generate_content(prompt)
         text = response.text.strip()
         
-        # Clean up the response - remove markdown code blocks if present
+        # Improved JSON extraction - similar to generate_questions
         if text.startswith('```'):
-            text = text.split('```')[1]
-            if text.startswith('json'):
-                text = text[4:]
+            parts = text.split('```')
+            for part in parts:
+                part = part.strip()
+                if part.startswith('json'):
+                    text = part[4:].strip()
+                    break
+                elif part.startswith('['):
+                    text = part
+                    break
+        else:
+            # Try to find JSON array in the text
+            json_match = re.search(r'\[.*\]', text, re.DOTALL)
+            if json_match:
+                text = json_match.group(0)
+        
         text = text.strip()
+        
+        # Remove any leading/trailing non-JSON characters
+        if not text.startswith('['):
+            # Try to find the array
+            start_idx = text.find('[')
+            end_idx = text.rfind(']')
+            if start_idx != -1 and end_idx != -1 and end_idx > start_idx:
+                text = text[start_idx:end_idx+1]
         
         # Parse JSON
         subtopics = json.loads(text)
-        if isinstance(subtopics, list):
-            return [str(st) for st in subtopics]
+        if isinstance(subtopics, list) and len(subtopics) > 0:
+            # Filter out generic subtopics
+            filtered = []
+            generic_patterns = [
+                r'\b(basics?|basic)\b',
+                r'\b(advanced|advanced concepts?)\b',
+                r'\b(introduction|intro)\b',
+                r'\b(overview)\b',
+                r'\b(applications?)\b',
+                r'\b(general concepts?)\b'
+            ]
+            
+            for st in subtopics:
+                st_str = str(st).strip()
+                st_lower = st_str.lower()
+                
+                # Check if it matches generic patterns
+                is_generic = False
+                for pattern in generic_patterns:
+                    if re.search(pattern, st_lower):
+                        # If it's just "{topic} Basics" or similar, it's generic
+                        # But allow longer phrases like "Advanced Machine Learning Techniques"
+                        words = st_lower.split()
+                        if len(words) <= 3 and any(re.search(pattern, word) for word in words):
+                            is_generic = True
+                            break
+                
+                # Also check if it's too generic (just topic name + generic word)
+                if not is_generic:
+                    topic_lower = topic.lower()
+                    if st_lower.startswith(topic_lower) and len(st_lower.split()) <= 3:
+                        # Might be generic, check further
+                        remaining = st_lower[len(topic_lower):].strip()
+                        if remaining in ['basics', 'basic', 'advanced', 'introduction', 'overview', 'applications']:
+                            is_generic = True
+                
+                if not is_generic:
+                    filtered.append(st_str)
+            
+            if len(filtered) >= 4:  # Prefer at least 4 subtopics
+                print(f"Successfully generated {len(filtered)} specific sub topics: {filtered}")
+                return filtered
+            elif len(filtered) > 0:
+                print(f"Warning: Only {len(filtered)} sub topics passed filtering. Using them: {filtered}")
+                return filtered
+            else:
+                print(f"Warning: All sub topics were filtered as generic. Using original list: {subtopics}")
+                return [str(st) for st in subtopics]
+        else:
+            print(f"Warning: Invalid response format. Got: {text[:200]}")
+            return []
+    except json.JSONDecodeError as e:
+        print(f"JSON decode error generating sub topics: {e}")
+        print(f"Response text: {text[:500] if 'text' in locals() else 'N/A'}")
+        # Try one more time with a simpler prompt
+        try:
+            retry_prompt = f'Return a JSON array of 5 specific sub topics for "{topic}". Example: ["Topic 1", "Topic 2", "Topic 3", "Topic 4", "Topic 5"]'
+            retry_response = model.generate_content(retry_prompt)
+            retry_text = retry_response.text.strip()
+            # Extract JSON
+            json_match = re.search(r'\[.*\]', retry_text, re.DOTALL)
+            if json_match:
+                retry_text = json_match.group(0)
+            subtopics = json.loads(retry_text)
+            if isinstance(subtopics, list) and len(subtopics) > 0:
+                return [str(st) for st in subtopics]
+        except:
+            pass
         return []
     except Exception as e:
         print(f"Error generating sub topics: {e}")
-        # Fallback to generic sub topics
-        return [f"{topic} Basics", f"{topic} Advanced Concepts", f"{topic} Applications"]
+        print(f"Response text: {text[:500] if 'text' in locals() else 'N/A'}")
+        return []
 
 
 def generate_questions(subtopic: str, topic: str, num_questions: int = 3) -> list[dict]:
