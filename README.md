@@ -35,4 +35,3 @@ Jack never built a large project - so his learning to build a project made both 
 We also both learned instruments to record the ["You Won"](https://www.youtube.com/watch?v=vQGePa3XUDI) song. Jack learned a lot about working in a large code base, and Nate practiced his skills of teaching, while also learning that you can enjoy a hackathon while still being productive.
 ## What's next for Fly Me to the Moon
 We are going to finish adding an accounts system, work on recording an entire soundtrack to the game, adding galaxies (progressions for not just a review, but a long term plan), and then competing with friends. We considered making a linkage system with Canvas LMS - which depending on continued user feedback we will consider.
-```
