@@ -7,7 +7,10 @@ from google.api_core import exceptions
 import google.generativeai as genai
 from dotenv import load_dotenv
 
-load_dotenv()
+# Load .env from project root
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+env_path = os.path.join(project_root, '.env')
+load_dotenv(dotenv_path=env_path)
 
 # Configure Gemini API
 genai.configure(api_key=os.getenv('GEMINI_API_KEY'))

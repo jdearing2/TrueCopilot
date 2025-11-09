@@ -4,17 +4,27 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width,initial-scale=1" />
     <title>Space Journey — True Copilot</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <style>
         * { box-sizing: border-box; }
         body {
             font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Ubuntu, 'Helvetica Neue', Arial;
             margin: 0;
             padding: 20px;
-            background: linear-gradient(135deg, #0a0e27 0%, #1a1a2e 50%, #16213e 100%);
+            background: #000000;
             color: #e0e7ff;
             min-height: 100vh;
             position: relative;
             overflow-x: hidden;
+        }
+        #threejs-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
         }
         /* Stars background */
         body::before {
@@ -41,7 +51,7 @@
             from { transform: translateY(0); }
             to { transform: translateY(-100px); }
         }
-        .container { max-width: 1200px; margin: 0 auto; position: relative; z-index: 1; }
+        .container { max-width: 1200px; margin: 0 auto; position: relative; z-index: 10; }
         .card {
             background: rgba(15, 23, 42, 0.8);
             backdrop-filter: blur(10px);
@@ -132,6 +142,68 @@
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+        }
+        
+        /* Blast Off Progress Bar */
+        .blast-off-container {
+            margin: 40px 0;
+            padding: 20px;
+        }
+        .blast-off-label {
+            text-align: center;
+            font-size: 18px;
+            font-weight: 600;
+            color: #fbbf24;
+            margin-bottom: 16px;
+            text-shadow: 0 0 10px rgba(251, 191, 36, 0.5);
+        }
+        .progress-track {
+            width: 100%;
+            height: 8px;
+            background: rgba(30, 41, 59, 0.6);
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 12px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff6b9d, #9d4edd, #4cc9f0);
+            background-size: 200% 100%;
+            border-radius: 4px;
+            width: 0%;
+            transition: width 0.1s linear;
+            animation: gradientFlow 2s linear infinite;
+            box-shadow: 0 0 10px rgba(157, 78, 221, 0.5);
+        }
+        @keyframes gradientFlow {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 200% 50%; }
+        }
+        .spaceship-container {
+            position: relative;
+            width: 100%;
+            height: 60px;
+            margin-top: 8px;
+        }
+        .spaceship {
+            position: absolute;
+            font-size: 32px;
+            left: 0%;
+            transition: left 0.1s linear;
+            filter: drop-shadow(0 0 8px rgba(251, 191, 36, 0.8));
+            animation: spaceshipBounce 0.5s ease-in-out infinite;
+        }
+        @keyframes spaceshipBounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
+        .progress-stats {
+            text-align: center;
+            font-size: 14px;
+            color: #94a3b8;
+            margin-top: 8px;
         }
         .error {
             background: rgba(239, 68, 68, 0.2);
@@ -304,9 +376,327 @@
             text-shadow: 0 0 20px rgba(251, 191, 36, 0.5);
         }
         .small { font-size: 14px; color: #94a3b8; }
+
+        /* Music Control Button */
+        .music-control {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            z-index: 100;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ff6b9d, #9d4edd, #4cc9f0);
+            background-size: 200% 200%;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 30px rgba(157, 78, 221, 0.3);
+            transition: all 0.3s ease;
+            animation: gradientShift 3s ease infinite;
+        }
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+        .music-control:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 30px rgba(0, 0, 0, 0.5), 0 0 40px rgba(157, 78, 221, 0.5);
+        }
+        .music-control:active {
+            transform: scale(0.95);
+        }
+        .music-control.playing {
+            animation: pulseGlow 2s ease-in-out infinite;
+        }
+        @keyframes pulseGlow {
+            0%, 100% {
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 30px rgba(157, 78, 221, 0.3);
+            }
+            50% {
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 50px rgba(157, 78, 221, 0.6);
+            }
+        }
+        .music-control.muted {
+            opacity: 0.6;
+        }
+        .music-control.muted::after {
+            content: '🔇';
+            position: absolute;
+            font-size: 16px;
+            bottom: -8px;
+            right: -8px;
+            background: rgba(239, 68, 68, 0.9);
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid white;
+        }
+
+        /* Tablet Responsive (max-width: 1024px) */
+        @media (max-width: 1024px) {
+            body {
+                padding: 16px;
+            }
+            .container {
+                max-width: 100%;
+            }
+            .card {
+                padding: 24px;
+            }
+            h1 {
+                font-size: clamp(24px, 5vw, 32px);
+            }
+            h2 {
+                font-size: clamp(20px, 4vw, 24px);
+            }
+            .planet-progress {
+                margin: 30px 0;
+                padding: 16px;
+            }
+            .planet-dot {
+                width: 45px;
+                height: 45px;
+                font-size: 11px;
+            }
+            .current-planet {
+                padding: 24px;
+                margin: 30px 0;
+            }
+            .question-card {
+                padding: 20px;
+            }
+        }
+
+        /* Mobile Responsive (max-width: 768px) */
+        @media (max-width: 768px) {
+            body {
+                padding: 12px;
+            }
+            .card {
+                padding: 20px;
+                border-radius: 12px;
+            }
+            h1 {
+                font-size: clamp(22px, 6vw, 28px);
+                margin: 0 0 6px;
+            }
+            h2 {
+                font-size: clamp(18px, 5vw, 22px);
+                margin: 0 0 12px;
+            }
+            .controls {
+                flex-direction: column;
+                gap: 10px;
+            }
+            input[type="text"],
+            select,
+            button {
+                width: 100%;
+                min-width: unset;
+            }
+            .planet-progress {
+                margin: 24px 0;
+                padding: 12px;
+                gap: 8px;
+                justify-content: center;
+            }
+            .planet-dot {
+                width: 40px;
+                height: 40px;
+                font-size: 10px;
+                min-width: 40px;
+                min-height: 40px;
+            }
+            .current-planet {
+                padding: 20px;
+                margin: 24px 0;
+            }
+            .planet-header {
+                font-size: clamp(22px, 5vw, 26px);
+            }
+            .planet-subtitle {
+                font-size: clamp(14px, 3.5vw, 16px);
+                margin-bottom: 20px;
+            }
+            .question-card {
+                padding: 16px;
+                margin: 16px 0;
+            }
+            .question-text {
+                font-size: clamp(16px, 4vw, 18px);
+                margin-bottom: 16px;
+            }
+            .options {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+            .opt {
+                padding: 14px;
+                font-size: clamp(14px, 3.5vw, 15px);
+                min-height: 44px;
+                display: flex;
+                align-items: center;
+            }
+            .opt:active:not(.answered) {
+                transform: scale(0.98);
+                background: rgba(59, 130, 246, 0.3);
+            }
+            .explanation {
+                font-size: clamp(13px, 3vw, 14px);
+                padding: 12px;
+            }
+            .next-planet-btn {
+                width: 100%;
+                padding: 16px;
+                font-size: clamp(15px, 3.5vw, 16px);
+                margin-top: 20px;
+            }
+            .mission-complete {
+                padding: 40px 16px;
+                margin-top: 30px;
+            }
+            .mission-complete h2 {
+                font-size: clamp(28px, 6vw, 36px);
+            }
+            .loading {
+                padding: 40px 16px;
+            }
+            .spinner {
+                width: 40px;
+                height: 40px;
+            }
+        }
+
+        /* Small Mobile (max-width: 480px) */
+        @media (max-width: 480px) {
+            body {
+                padding: 8px;
+            }
+            .card {
+                padding: 16px;
+                margin-bottom: 16px;
+            }
+            h1 {
+                font-size: 20px;
+            }
+            h2 {
+                font-size: 18px;
+            }
+            .planet-progress {
+                margin: 20px 0;
+                padding: 10px;
+                gap: 6px;
+            }
+            .planet-dot {
+                width: 35px;
+                height: 35px;
+                font-size: 9px;
+                min-width: 35px;
+                min-height: 35px;
+            }
+            .current-planet {
+                padding: 16px;
+                margin: 20px 0;
+            }
+            .planet-header {
+                font-size: 20px;
+            }
+            .planet-subtitle {
+                font-size: 14px;
+                margin-bottom: 16px;
+            }
+            .question-card {
+                padding: 14px;
+                margin: 12px 0;
+            }
+            .question-text {
+                font-size: 16px;
+                margin-bottom: 14px;
+            }
+            .opt {
+                padding: 12px;
+                font-size: 14px;
+            }
+            .explanation {
+                font-size: 13px;
+                padding: 10px;
+            }
+            .mission-complete {
+                padding: 30px 12px;
+            }
+            .mission-complete h2 {
+                font-size: 24px;
+            }
+        }
+
+        /* Large screens optimization */
+        @media (min-width: 1400px) {
+            .container {
+                max-width: 1400px;
+            }
+        }
+
+        /* Touch device optimizations */
+        @media (hover: none) and (pointer: coarse) {
+            .opt:hover:not(.answered) {
+                transform: none;
+            }
+            button:hover:not(:disabled) {
+                transform: none;
+            }
+            .opt:active:not(.answered) {
+                transform: scale(0.95);
+            }
+            button:active:not(:disabled) {
+                transform: scale(0.98);
+            }
+            .music-control:hover {
+                transform: none;
+            }
+        }
+
+        /* Mobile music button */
+        @media (max-width: 768px) {
+            .music-control {
+                width: 50px;
+                height: 50px;
+                bottom: 16px;
+                right: 16px;
+                font-size: 20px;
+            }
+            .blast-off-container {
+                margin: 30px 0;
+                padding: 16px;
+            }
+            .blast-off-label {
+                font-size: clamp(16px, 4vw, 18px);
+                margin-bottom: 12px;
+            }
+            .spaceship {
+                font-size: 28px;
+            }
+            .progress-stats {
+                font-size: clamp(12px, 3vw, 14px);
+            }
+        }
     </style>
 </head>
 <body>
+    <canvas id="threejs-canvas"></canvas>
+    <audio id="backgroundMusic" loop>
+        <source src="/audio/Noisestorm - Crab Rave [Monstercat Release].mp3" type="audio/mpeg">
+        <!-- Replace with your friend's song when ready - just update the filename above -->
+    </audio>
+    <button id="musicControl" class="music-control" title="Toggle Music" aria-label="Toggle background music">
+        🎵
+    </button>
     <div class="container">
         <div class="card">
             <h1>🚀 Space Journey Study Mission</h1>
@@ -327,7 +717,16 @@
             <div id="loadingArea" class="hidden">
                 <div class="loading">
                     <div class="spinner"></div>
-                    <div>Preparing your space journey... This may take a moment.</div>
+                    <div class="blast-off-container">
+                        <div class="blast-off-label">🚀 Blasting Off to Generate Your Journey 🚀</div>
+                        <div class="progress-track">
+                            <div class="progress-fill" id="progressFill"></div>
+                        </div>
+                        <div class="spaceship-container">
+                            <div class="spaceship" id="spaceship">🚀</div>
+                        </div>
+                        <div class="progress-stats" id="progressStats">Preparing launch sequence...</div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -359,6 +758,412 @@
     </div>
 
     <script>
+        // Three.js Asteroid Field Setup
+        let scene, camera, renderer, asteroids = [];
+        let currentPlanetCenter = { x: 0, y: 0, z: 0 };
+        let animationId = null;
+
+        function initThreeJS() {
+            const canvas = document.getElementById('threejs-canvas');
+            
+            // Scene setup with gradient background
+            scene = new THREE.Scene();
+            createGradientBackground();
+            
+            // Add fog for hazy effect
+            scene.fog = new THREE.FogExp2(0x000000, 0.015);
+            
+            // Camera setup - positioned to look at the center
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 0, 15);
+            camera.lookAt(0, 0, 0);
+            
+            // Renderer setup with haze effect
+            // Optimize pixel ratio for mobile devices
+            const isMobile = window.innerWidth <= 768;
+            const pixelRatio = isMobile ? Math.min(window.devicePixelRatio, 1.5) : window.devicePixelRatio;
+            
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: !isMobile, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(pixelRatio);
+            renderer.setClearColor(0x000000, 0); // Transparent for haze effect
+            
+            // Enhanced lighting with bisexual flag colors
+            const ambientLight = new THREE.AmbientLight(0x2a1a3d, 0.4);
+            scene.add(ambientLight);
+            
+            // Pink light
+            const pointLight1 = new THREE.PointLight(0xff6b9d, 1.2, 100);
+            pointLight1.position.set(10, 10, 10);
+            scene.add(pointLight1);
+            
+            // Purple light
+            const pointLight2 = new THREE.PointLight(0x9d4edd, 1.0, 100);
+            pointLight2.position.set(-10, -10, -10);
+            scene.add(pointLight2);
+            
+            // Blue light
+            const pointLight3 = new THREE.PointLight(0x4cc9f0, 0.9, 100);
+            pointLight3.position.set(0, 15, -5);
+            scene.add(pointLight3);
+            
+            // Create starfield background with colored stars
+            createStarfield();
+            
+            // Create asteroid field with better colors
+            createAsteroidField();
+            
+            // Handle window resize
+            window.addEventListener('resize', onWindowResize);
+            
+            // Start animation loop
+            animate();
+        }
+
+        function createGradientBackground() {
+            // Create a gradient plane for the background
+            const geometry = new THREE.PlaneGeometry(2000, 2000);
+            const material = new THREE.ShaderMaterial({
+                uniforms: {
+                    color1: { value: new THREE.Color(0xff0080) }, // Pink
+                    color2: { value: new THREE.Color(0x7b2cbf) }, // Purple
+                    color3: { value: new THREE.Color(0x0038a8) }, // Blue
+                    time: { value: 0 }
+                },
+                vertexShader: `
+                    varying vec2 vUv;
+                    void main() {
+                        vUv = uv;
+                        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                    }
+                `,
+                fragmentShader: `
+                    uniform vec3 color1;
+                    uniform vec3 color2;
+                    uniform vec3 color3;
+                    uniform float time;
+                    varying vec2 vUv;
+                    
+                    void main() {
+                        // Create ultra-smooth gradient with bisexual flag colors
+                        // Use smoother interpolation for seamless blending
+                        float t = vUv.y;
+                        vec3 color;
+                        
+                        if (t < 0.5) {
+                            // Smooth transition from pink to purple
+                            float smoothT = smoothstep(0.0, 0.5, t);
+                            color = mix(color1, color2, smoothT);
+                        } else {
+                            // Smooth transition from purple to blue
+                            float smoothT = smoothstep(0.5, 1.0, t);
+                            color = mix(color2, color3, smoothT);
+                        }
+                        
+                        // Very subtle, slow animation for hazy effect
+                        color += sin(time * 0.3 + vUv.x * 5.0) * 0.02;
+                        color += sin(time * 0.15 + vUv.y * 5.0) * 0.02;
+                        
+                        // Darken for space effect with haze
+                        color *= 0.12;
+                        
+                        gl_FragColor = vec4(color, 1.0);
+                    }
+                `
+            });
+            
+            const plane = new THREE.Mesh(geometry, material);
+            plane.position.z = -500;
+            scene.add(plane);
+            
+            // Update time uniform in animation loop
+            scene.userData.backgroundPlane = plane;
+        }
+
+        function createStarfield() {
+            const starsGeometry = new THREE.BufferGeometry();
+            const starsColors = [];
+            const starsVertices = [];
+            const starsSizes = [];
+            
+            // Adjust star count based on device
+            const isMobile = window.innerWidth <= 768;
+            const isTablet = window.innerWidth <= 1024 && window.innerWidth > 768;
+            const starCount = isMobile ? 2000 : (isTablet ? 3500 : 5000);
+            
+            // Bisexual flag color palette
+            const colors = [
+                new THREE.Color(0xff6b9d), // Pink
+                new THREE.Color(0x9d4edd), // Purple
+                new THREE.Color(0x4cc9f0), // Blue
+                new THREE.Color(0xffffff)  // White for variety
+            ];
+            
+            // Store star positions for light sources
+            const starLightPositions = [];
+            
+            for (let i = 0; i < starCount; i++) {
+                const x = (Math.random() - 0.5) * 2000;
+                const y = (Math.random() - 0.5) * 2000;
+                const z = (Math.random() - 0.5) * 2000;
+                starsVertices.push(x, y, z);
+                
+                // Random color from palette
+                const color = colors[Math.floor(Math.random() * colors.length)];
+                starsColors.push(color.r, color.g, color.b);
+                
+                // Smaller star sizes
+                starsSizes.push(0.03 + Math.random() * 0.08);
+                
+                // Some stars act as light sources (about 1 in 20)
+                if (Math.random() < 0.05) {
+                    starLightPositions.push({ x, y, z, color });
+                }
+            }
+            
+            starsGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starsVertices, 3));
+            starsGeometry.setAttribute('color', new THREE.Float32BufferAttribute(starsColors, 3));
+            starsGeometry.setAttribute('size', new THREE.Float32BufferAttribute(starsSizes, 1));
+            
+            const starsMaterial = new THREE.PointsMaterial({
+                size: 0.15,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.8,
+                sizeAttenuation: true
+            });
+            
+            const stars = new THREE.Points(starsGeometry, starsMaterial);
+            scene.add(stars);
+            
+            // Add point lights for stars that act as light sources
+            starLightPositions.forEach((star, index) => {
+                const light = new THREE.PointLight(star.color, 0.3, 200);
+                light.position.set(star.x, star.y, star.z);
+                scene.add(light);
+            });
+            
+            // Store star lights for potential updates
+            scene.userData.starLights = starLightPositions;
+        }
+
+        function createAsteroidField() {
+            // Clear existing asteroids
+            asteroids.forEach(asteroid => scene.remove(asteroid));
+            asteroids = [];
+            
+            // Adjust asteroid count based on device performance
+            const isMobile = window.innerWidth <= 768;
+            const isTablet = window.innerWidth <= 1024 && window.innerWidth > 768;
+            const asteroidCount = isMobile ? 30 : (isTablet ? 45 : 60);
+            
+            for (let i = 0; i < asteroidCount; i++) {
+                // Random position around center (spherical distribution)
+                const radius = 5 + Math.random() * 15;
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos(2 * Math.random() - 1);
+                
+                const x = currentPlanetCenter.x + radius * Math.sin(phi) * Math.cos(theta);
+                const y = currentPlanetCenter.y + radius * Math.sin(phi) * Math.sin(theta);
+                const z = currentPlanetCenter.z + radius * Math.cos(phi);
+                
+                // Create irregular asteroid shape
+                const geometry = new THREE.DodecahedronGeometry(
+                    0.3 + Math.random() * 0.7,
+                    Math.floor(Math.random() * 2)
+                );
+                
+                // Random rotation for irregularity
+                geometry.rotateX(Math.random() * Math.PI);
+                geometry.rotateY(Math.random() * Math.PI);
+                geometry.rotateZ(Math.random() * Math.PI);
+                
+                // Create material with aesthetic colors inspired by bisexual flag
+                const colorChoices = [
+                    new THREE.Color(0x4a5568), // Dark gray
+                    new THREE.Color(0x5a6c7d), // Blue-gray
+                    new THREE.Color(0x6b5b95), // Purple-gray
+                    new THREE.Color(0x7c6b8d), // Pink-gray
+                    new THREE.Color(0x8d7b85)  // Light gray
+                ];
+                const baseColor = colorChoices[Math.floor(Math.random() * colorChoices.length)];
+                
+                // Add subtle tint from flag colors
+                const tintIntensity = 0.15;
+                const tints = [
+                    new THREE.Color(0xff6b9d), // Pink
+                    new THREE.Color(0x9d4edd), // Purple
+                    new THREE.Color(0x4cc9f0)  // Blue
+                ];
+                const tint = tints[Math.floor(Math.random() * tints.length)];
+                
+                const finalColor = baseColor.clone().lerp(tint, tintIntensity);
+                
+                // Varying reflectiveness - about 1 in 10 should be noticeably reflective
+                const isReflective = Math.random() < 0.1; // ~10% chance
+                let metalness, roughness;
+                
+                if (isReflective) {
+                    // Noticeably reflective but not ultra shiny
+                    metalness = 0.5 + Math.random() * 0.3; // 0.5 to 0.8
+                    roughness = 0.2 + Math.random() * 0.2; // 0.2 to 0.4
+                } else {
+                    // Normal reflectiveness - various degrees
+                    metalness = 0.1 + Math.random() * 0.4; // 0.1 to 0.5
+                    roughness = 0.5 + Math.random() * 0.3; // 0.5 to 0.8
+                }
+                
+                const material = new THREE.MeshStandardMaterial({
+                    color: finalColor,
+                    metalness: metalness,
+                    roughness: roughness,
+                    emissive: finalColor.clone().multiplyScalar(0.05) // Subtle glow
+                });
+                
+                const asteroid = new THREE.Mesh(geometry, material);
+                asteroid.position.set(x, y, z);
+                
+                // Store rotation speed and axis for animation (slower)
+                asteroid.userData = {
+                    rotationSpeed: {
+                        x: (Math.random() - 0.5) * 0.005,
+                        y: (Math.random() - 0.5) * 0.005,
+                        z: (Math.random() - 0.5) * 0.005
+                    },
+                    orbitSpeed: (Math.random() - 0.5) * 0.002,
+                    orbitRadius: radius,
+                    orbitAngle: theta,
+                    orbitPhi: phi
+                };
+                
+                scene.add(asteroid);
+                asteroids.push(asteroid);
+            }
+        }
+
+        function updateAsteroidFieldForPlanet(planetIndex) {
+            // Update center position based on planet
+            // Each planet gets a slightly different center position for variety
+            const angle = (planetIndex / 9) * Math.PI * 2;
+            currentPlanetCenter = {
+                x: Math.cos(angle) * 2,
+                y: Math.sin(angle) * 2,
+                z: Math.sin(angle * 0.5) * 2
+            };
+            
+            // Reposition camera to look at new center
+            camera.position.set(
+                currentPlanetCenter.x,
+                currentPlanetCenter.y + 2,
+                currentPlanetCenter.z + 12
+            );
+            camera.lookAt(currentPlanetCenter.x, currentPlanetCenter.y, currentPlanetCenter.z);
+            
+            // Recreate asteroid field around new center
+            createAsteroidField();
+        }
+
+        function animate() {
+            animationId = requestAnimationFrame(animate);
+            
+            // Update background gradient time (slower)
+            if (scene.userData.backgroundPlane) {
+                scene.userData.backgroundPlane.material.uniforms.time.value += 0.003;
+            }
+            
+            // Rotate asteroids
+            asteroids.forEach(asteroid => {
+                asteroid.rotation.x += asteroid.userData.rotationSpeed.x;
+                asteroid.rotation.y += asteroid.userData.rotationSpeed.y;
+                asteroid.rotation.z += asteroid.userData.rotationSpeed.z;
+                
+                // Slow orbital motion
+                asteroid.userData.orbitAngle += asteroid.userData.orbitSpeed;
+                const radius = asteroid.userData.orbitRadius;
+                const theta = asteroid.userData.orbitAngle;
+                const phi = asteroid.userData.orbitPhi;
+                
+                asteroid.position.x = currentPlanetCenter.x + radius * Math.sin(phi) * Math.cos(theta);
+                asteroid.position.y = currentPlanetCenter.y + radius * Math.sin(phi) * Math.sin(theta);
+                asteroid.position.z = currentPlanetCenter.z + radius * Math.cos(phi);
+            });
+            
+            // Rotate starfield very slowly
+            const starfield = scene.children.find(child => child instanceof THREE.Points);
+            if (starfield) {
+                starfield.rotation.y += 0.00003;
+            }
+            
+            renderer.render(scene, camera);
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            
+            // Recreate asteroid field with appropriate count for new screen size
+            if (scene && asteroids.length > 0) {
+                createAsteroidField();
+            }
+        }
+
+        // Initialize Three.js when page loads
+        window.addEventListener('load', () => {
+            initThreeJS();
+        });
+
+        // Music Control
+        const backgroundMusic = document.getElementById('backgroundMusic');
+        const musicControl = document.getElementById('musicControl');
+        let isMusicPlaying = false;
+
+        // Set initial volume (adjust as needed)
+        backgroundMusic.volume = 0.3;
+
+        musicControl.addEventListener('click', () => {
+            if (isMusicPlaying) {
+                backgroundMusic.pause();
+                musicControl.classList.remove('playing');
+                musicControl.classList.add('muted');
+                musicControl.textContent = '🔇';
+                isMusicPlaying = false;
+            } else {
+                backgroundMusic.play().catch(err => {
+                    console.log('Audio play failed:', err);
+                    // Some browsers require user interaction first
+                });
+                musicControl.classList.add('playing');
+                musicControl.classList.remove('muted');
+                musicControl.textContent = '🎵';
+                isMusicPlaying = true;
+            }
+        });
+
+        // Handle audio events
+        backgroundMusic.addEventListener('play', () => {
+            musicControl.classList.add('playing');
+            musicControl.classList.remove('muted');
+            musicControl.textContent = '🎵';
+            isMusicPlaying = true;
+        });
+
+        backgroundMusic.addEventListener('pause', () => {
+            musicControl.classList.remove('playing');
+            musicControl.classList.add('muted');
+            musicControl.textContent = '🔇';
+            isMusicPlaying = false;
+        });
+
+        // Auto-play on user interaction (required by browsers)
+        let hasInteracted = false;
+        document.addEventListener('click', () => {
+            if (!hasInteracted && isMusicPlaying) {
+                backgroundMusic.play().catch(() => {});
+                hasInteracted = true;
+            }
+        }, { once: true });
+
         const PLANETS = [
             { name: 'Pluto', emoji: '🪐', order: 9 },
             { name: 'Neptune', emoji: '🔵', order: 8 },
@@ -417,6 +1222,14 @@
             loadingArea.classList.remove('hidden');
             generateBtn.disabled = true;
 
+            // Calculate total generation time: ~6 seconds per question batch
+            // With 9 planets and parallel processing, estimate: 6 * questionsPerSubtopic + 3 seconds
+            const estimatedSeconds = 6 * questionsPerSubtopic + 3;
+            const totalDuration = estimatedSeconds * 1000; // Convert to milliseconds
+
+            // Start progress animation
+            startBlastOffProgress(totalDuration, questionsPerSubtopic);
+
             try {
                 const response = await fetch('/api/generate-study', {
                     method: 'POST',
@@ -452,15 +1265,77 @@
 
                 missionTitle.textContent = `Mission: Master "${data.topic}"`;
                 displayPlanetProgress();
+                updateAsteroidFieldForPlanet(0); // Initialize for first planet
                 displayCurrentPlanet();
                 journeyArea.classList.remove('hidden');
 
             } catch (error) {
                 console.error('Error:', error);
+                stopBlastOffProgress();
                 showError(error.message || 'An error occurred while generating the study tree');
             } finally {
+                stopBlastOffProgress();
                 loadingArea.classList.add('hidden');
                 generateBtn.disabled = false;
+            }
+        }
+
+        let progressInterval = null;
+        let progressStartTime = null;
+        let progressDuration = 0;
+
+        function startBlastOffProgress(duration, questionsPerSubtopic) {
+            const progressFill = document.getElementById('progressFill');
+            const spaceship = document.getElementById('spaceship');
+            const progressStats = document.getElementById('progressStats');
+            
+            progressDuration = duration;
+            progressStartTime = Date.now();
+            let currentProgress = 0;
+            
+            // Reset progress
+            progressFill.style.width = '0%';
+            spaceship.style.left = '0%';
+            progressStats.textContent = 'Generating 9 subtopics...';
+            
+            progressInterval = setInterval(() => {
+                const elapsed = Date.now() - progressStartTime;
+                currentProgress = Math.min((elapsed / progressDuration) * 100, 100);
+                
+                progressFill.style.width = currentProgress + '%';
+                spaceship.style.left = currentProgress + '%';
+                
+                // Update status text based on progress
+                if (currentProgress < 10) {
+                    progressStats.textContent = 'Generating 9 subtopics...';
+                } else if (currentProgress < 30) {
+                    const planetNum = Math.floor((currentProgress - 10) / 20 * 9) + 1;
+                    progressStats.textContent = `Generating questions for planet ${planetNum}/9...`;
+                } else if (currentProgress < 90) {
+                    const planetNum = Math.floor((currentProgress - 30) / 60 * 9) + 1;
+                    progressStats.textContent = `Generating questions for planet ${planetNum}/9...`;
+                } else {
+                    progressStats.textContent = 'Finalizing your space journey...';
+                }
+                
+                if (currentProgress >= 100) {
+                    stopBlastOffProgress();
+                    progressStats.textContent = 'Journey ready! Preparing for launch...';
+                }
+            }, 50); // Update every 50ms for smooth animation
+        }
+
+        function stopBlastOffProgress() {
+            if (progressInterval) {
+                clearInterval(progressInterval);
+                progressInterval = null;
+            }
+            // Ensure we finish at 100%
+            const progressFill = document.getElementById('progressFill');
+            const spaceship = document.getElementById('spaceship');
+            if (progressFill && spaceship) {
+                progressFill.style.width = '100%';
+                spaceship.style.left = '100%';
             }
         }
 
@@ -707,6 +1582,7 @@
             } else {
                 if (currentPlanetIndex < PLANETS.length - 1) {
                     currentPlanetIndex++;
+                    updateAsteroidFieldForPlanet(currentPlanetIndex);
                     displayCurrentPlanet();
                 }
             }

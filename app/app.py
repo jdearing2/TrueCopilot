@@ -1,11 +1,18 @@
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request, send_from_directory
 from study_service import create_study_tree
+import os
 
-app = Flask("truecopilot")
+app = Flask("truecopilot", static_folder=None)
 
 @app.route("/")
 def index():
     return render_template('index.html')
+
+@app.route("/audio/<filename>")
+def serve_audio(filename):
+    """Serve audio files from the audio directory."""
+    audio_dir = os.path.join(os.path.dirname(__file__), 'audio')
+    return send_from_directory(audio_dir, filename)
 
 @app.route("/api/generate-study", methods=["POST"])
 def generate_study():
