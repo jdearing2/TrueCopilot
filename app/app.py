@@ -1,5 +1,6 @@
-from flask import Flask, jsonify, render_template, request, send_from_directory
-from study_service import create_study_tree
+from flask import Flask, jsonify, render_template, request, send_from_directory, Response
+from study_service import create_study_tree, generate_planet_transition_message
+from tts_service import text_to_speech
 import os
 
 app = Flask("truecopilot", static_folder=None)
@@ -40,6 +41,57 @@ def generate_study():
         
     except Exception as e:
         print(f"Error generating study tree: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/tts", methods=["POST"])
+def tts():
+    """Convert text to speech using ElevenLabs."""
+    try:
+        data = request.get_json()
+        text = data.get('text', '').strip()
+        
+        if not text:
+            return jsonify({"error": "Text is required"}), 400
+        
+        # Generate speech
+        audio_data = text_to_speech(text)
+        
+        # Return audio as MP3
+        return Response(
+            audio_data,
+            mimetype='audio/mpeg',
+            headers={
+                'Content-Disposition': 'inline; filename=speech.mp3',
+                'Cache-Control': 'no-cache'
+            }
+        )
+        
+    except ValueError as e:
+        print(f"TTS configuration error: {e}")
+        return jsonify({"error": "TTS service not configured"}), 500
+    except Exception as e:
+        print(f"Error generating TTS: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/planet-transition", methods=["POST"])
+def planet_transition():
+    """Generate a quirky transition message between planets."""
+    try:
+        data = request.get_json()
+        topic = data.get('topic', '').strip()
+        from_planet = data.get('from_planet', '').strip()
+        to_planet = data.get('to_planet', '').strip()
+        from_subtopic = data.get('from_subtopic', '').strip()
+        to_subtopic = data.get('to_subtopic', '').strip()
+        
+        if not all([topic, from_planet, to_planet, from_subtopic, to_subtopic]):
+            return jsonify({"error": "All fields are required"}), 400
+        
+        message = generate_planet_transition_message(topic, from_planet, to_planet, from_subtopic, to_subtopic)
+        return jsonify({"message": message}), 200
+        
+    except Exception as e:
+        print(f"Error generating transition message: {e}")
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":

@@ -439,6 +439,56 @@
             border: 2px solid white;
         }
 
+        /* TTS Control Button */
+        .tts-control {
+            position: fixed;
+            bottom: 24px;
+            right: 96px;
+            z-index: 100;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #ff6b9d, #9d4edd, #4cc9f0);
+            background-size: 200% 200%;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4), 0 0 30px rgba(157, 78, 221, 0.3);
+            transition: all 0.3s ease;
+            animation: gradientShift 3s ease infinite;
+        }
+        .tts-control:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 30px rgba(0, 0, 0, 0.5), 0 0 40px rgba(157, 78, 221, 0.5);
+        }
+        .tts-control:active {
+            transform: scale(0.95);
+        }
+        .tts-control.active {
+            animation: pulseGlow 2s ease-in-out infinite;
+        }
+        .tts-control.disabled {
+            opacity: 0.6;
+        }
+        .tts-control.disabled::after {
+            content: '🔇';
+            position: absolute;
+            font-size: 16px;
+            bottom: -8px;
+            right: -8px;
+            background: rgba(239, 68, 68, 0.9);
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px solid white;
+        }
+
         /* Tablet Responsive (max-width: 1024px) */
         @media (max-width: 1024px) {
             body {
@@ -671,6 +721,13 @@
                 right: 16px;
                 font-size: 20px;
             }
+            .tts-control {
+                width: 50px;
+                height: 50px;
+                bottom: 16px;
+                right: 76px;
+                font-size: 20px;
+            }
             .blast-off-container {
                 margin: 30px 0;
                 padding: 16px;
@@ -691,11 +748,14 @@
 <body>
     <canvas id="threejs-canvas"></canvas>
     <audio id="backgroundMusic" loop>
-        <source src="/audio/output_combined.mp3" type="audio/mpeg">
+        <source src="/audio/send.mp3" type="audio/mpeg">
         <!-- Victory song with friend will be added when ready -->
     </audio>
     <button id="musicControl" class="music-control" title="Toggle Music" aria-label="Toggle background music">
         🎵
+    </button>
+    <button id="ttsControl" class="tts-control active" title="Toggle Text-to-Speech" aria-label="Toggle text-to-speech narration">
+        🔊
     </button>
     <div class="container">
         <div class="card">
@@ -1164,6 +1224,156 @@
             }
         }, { once: true });
 
+        // TTS Control
+        const ttsControl = document.getElementById('ttsControl');
+        let isTTSEnabled = true;
+        let currentTTSAudio = null;
+
+        // TTS function to speak text
+        async function speakText(text) {
+            if (!isTTSEnabled || !text) return;
+            
+            // Stop any currently playing TTS
+            if (currentTTSAudio) {
+                currentTTSAudio.pause();
+                currentTTSAudio = null;
+            }
+            
+            try {
+                const response = await fetch('/api/tts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: text })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('TTS request failed');
+                }
+                
+                const audioBlob = await response.blob();
+                const audioUrl = URL.createObjectURL(audioBlob);
+                currentTTSAudio = new Audio(audioUrl);
+                currentTTSAudio.volume = 0.7;
+                
+                await currentTTSAudio.play().catch(err => {
+                    console.log('TTS audio play failed:', err);
+                });
+                
+                // Clean up after playback
+                currentTTSAudio.addEventListener('ended', () => {
+                    URL.revokeObjectURL(audioUrl);
+                    currentTTSAudio = null;
+                });
+            } catch (error) {
+                console.error('TTS error:', error);
+            }
+        }
+
+        // TTS queue for sequential playback
+        let ttsQueue = [];
+        let isPlayingTTS = false;
+        let currentAudioElement = null;
+
+        async function speakTextSequential(text) {
+            if (!isTTSEnabled || !text) return Promise.resolve();
+            
+            return new Promise((resolve, reject) => {
+                ttsQueue.push({ text, resolve, reject });
+                processTTSQueue();
+            });
+        }
+
+        async function processTTSQueue() {
+            // Don't process if already playing or queue is empty
+            if (isPlayingTTS || ttsQueue.length === 0) {
+                return;
+            }
+            
+            isPlayingTTS = true;
+            const { text, resolve, reject } = ttsQueue.shift();
+            
+            try {
+                // Stop any currently playing audio (safety check)
+                if (currentAudioElement) {
+                    currentAudioElement.pause();
+                    currentAudioElement = null;
+                }
+                
+                const response = await fetch('/api/tts', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: text })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('TTS request failed');
+                }
+                
+                const audioBlob = await response.blob();
+                const audioUrl = URL.createObjectURL(audioBlob);
+                currentAudioElement = new Audio(audioUrl);
+                currentAudioElement.volume = 0.7;
+                
+                // Set up event handlers BEFORE playing
+                const cleanup = () => {
+                    URL.revokeObjectURL(audioUrl);
+                    currentAudioElement = null;
+                    isPlayingTTS = false;
+                };
+                
+                currentAudioElement.addEventListener('ended', () => {
+                    cleanup();
+                    resolve();
+                    // Process next in queue after a small delay
+                    setTimeout(() => processTTSQueue(), 100);
+                }, { once: true });
+                
+                currentAudioElement.addEventListener('error', (e) => {
+                    console.error('Audio playback error:', e);
+                    cleanup();
+                    reject(new Error('Audio playback failed'));
+                    // Continue with next item
+                    setTimeout(() => processTTSQueue(), 100);
+                }, { once: true });
+                
+                // Start playing
+                await currentAudioElement.play();
+                
+            } catch (error) {
+                console.error('TTS error:', error);
+                isPlayingTTS = false;
+                currentAudioElement = null;
+                reject(error);
+                // Continue with next item
+                setTimeout(() => processTTSQueue(), 100);
+            }
+        }
+
+        ttsControl.addEventListener('click', () => {
+            isTTSEnabled = !isTTSEnabled;
+            if (isTTSEnabled) {
+                ttsControl.classList.add('active');
+                ttsControl.classList.remove('disabled');
+                ttsControl.textContent = '🔊';
+            } else {
+                // Stop any playing TTS and clear queue
+                if (currentAudioElement) {
+                    currentAudioElement.pause();
+                    currentAudioElement = null;
+                }
+                if (currentTTSAudio) {
+                    currentTTSAudio.pause();
+                    currentTTSAudio = null;
+                }
+                // Clear the queue
+                ttsQueue = [];
+                isPlayingTTS = false;
+                ttsControl.classList.remove('active');
+                ttsControl.classList.add('disabled');
+                ttsControl.textContent = '🔇';
+            }
+        });
+
         const PLANETS = [
             { name: 'Pluto', emoji: '🪐', order: 9 },
             { name: 'Neptune', emoji: '🔵', order: 8 },
@@ -1266,7 +1476,7 @@
                 missionTitle.textContent = `Mission: Master "${data.topic}"`;
                 displayPlanetProgress();
                 updateAsteroidFieldForPlanet(0); // Initialize for first planet
-                displayCurrentPlanet();
+                await displayCurrentPlanet();
                 journeyArea.classList.remove('hidden');
 
             } catch (error) {
@@ -1383,7 +1593,7 @@
             planetProgress.appendChild(sunDot);
         }
 
-        function displayCurrentPlanet() {
+        async function displayCurrentPlanet() {
             if (isReturnTrip) {
                 // Return trip mode - show wrong answers
                 displayReturnTripQuestion();
@@ -1398,6 +1608,14 @@
                 return;
             }
 
+            // Clear any existing TTS queue and stop current audio when starting a new planet
+            if (currentAudioElement) {
+                currentAudioElement.pause();
+                currentAudioElement = null;
+            }
+            ttsQueue = [];
+            isPlayingTTS = false;
+
             currentPlanetArea.classList.remove('hidden');
             missionComplete.classList.add('hidden');
 
@@ -1408,6 +1626,9 @@
             planetSubtitle.textContent = subtopic.name;
             planetQuestions.innerHTML = '';
 
+            // Welcome message for new planet - wait for it to finish
+            await speakTextSequential('Welcome to ' + planet.name + '. Let\'s study ' + subtopic.name + '.').catch(() => {});
+
             if (!subtopic.questions || subtopic.questions.length === 0) {
                 planetQuestions.innerHTML = '<p class="small">No questions available for this planet.</p>';
                 nextPlanetBtn.classList.add('show');
@@ -1416,25 +1637,39 @@
 
             let answeredCount = 0;
             const totalQuestions = subtopic.questions.length;
+            let nextQuestionToRead = 1; // Track which question to read next (0-indexed, so 1 means second question)
 
             subtopic.questions.forEach((question, questionIndex) => {
-                const questionCard = createQuestionCard(question, questionIndex, currentPlanetIndex, () => {
+                const questionCard = createQuestionCard(question, questionIndex, currentPlanetIndex, async () => {
                     answeredCount++;
-                    if (answeredCount === totalQuestions) {
+                    
+                    // After feedback plays, read next question if available
+                    if (answeredCount < totalQuestions && nextQuestionToRead < totalQuestions) {
+                        const nextQuestion = subtopic.questions[nextQuestionToRead];
+                        await speakTextSequential('Question ' + (nextQuestionToRead + 1) + '. ' + nextQuestion.question).catch(() => {});
+                        nextQuestionToRead++;
+                    } else if (answeredCount >= totalQuestions) {
                         // All questions answered, unlock next planet
                         nextPlanetBtn.classList.add('show');
                         if (currentPlanetIndex < 8) {
                             planetStates[currentPlanetIndex + 1] = true;
                         }
+                        // Announce completion
+                        await speakTextSequential('Great job! You\'ve completed all questions for ' + planet.name + '. Ready to travel to the next planet?').catch(() => {});
                     }
-                });
+                }, questionIndex === 0); // Only read first question initially
                 planetQuestions.appendChild(questionCard);
             });
 
             displayPlanetProgress();
+            
+            // Read the first question after welcome message finishes
+            if (subtopic.questions && subtopic.questions.length > 0) {
+                await speakTextSequential('Question 1. ' + subtopic.questions[0].question).catch(() => {});
+            }
         }
 
-        function createQuestionCard(question, questionIndex, planetIndex, onAllAnswered) {
+        function createQuestionCard(question, questionIndex, planetIndex, onAllAnswered, readImmediately = false) {
             const card = document.createElement('div');
             card.className = 'question-card';
 
@@ -1442,6 +1677,9 @@
             questionText.className = 'question-text';
             questionText.textContent = `Question ${questionIndex + 1}: ${question.question}`;
             card.appendChild(questionText);
+            
+            // Note: First question is now read in displayCurrentPlanet after welcome message
+            // This parameter is kept for compatibility but not used
 
             const optionsDiv = document.createElement('div');
             optionsDiv.className = 'options';
@@ -1492,9 +1730,33 @@
                     // Show explanation
                     explanationDiv.classList.add('show');
                     
-                    // Check if all questions are answered
-                    if (onAllAnswered) {
-                        setTimeout(onAllAnswered, 100);
+                    // TTS feedback - play sequentially, then trigger next question
+                    if (isCorrect) {
+                        const feedback = 'Excellent! That\'s correct. ' + (question.explanation || 'Well done!');
+                        speakTextSequential(feedback).then(() => {
+                            // After feedback plays, trigger next question
+                            if (onAllAnswered) {
+                                setTimeout(onAllAnswered, 100);
+                            }
+                        }).catch(() => {
+                            // If TTS fails, still trigger next question
+                            if (onAllAnswered) {
+                                setTimeout(onAllAnswered, 100);
+                            }
+                        });
+                    } else {
+                        const feedback = 'Not quite right, but that\'s okay. ' + (question.explanation || 'Let\'s learn from this.');
+                        speakTextSequential(feedback).then(() => {
+                            // After feedback plays, trigger next question
+                            if (onAllAnswered) {
+                                setTimeout(onAllAnswered, 100);
+                            }
+                        }).catch(() => {
+                            // If TTS fails, still trigger next question
+                            if (onAllAnswered) {
+                                setTimeout(onAllAnswered, 100);
+                            }
+                        });
                     }
                 });
 
@@ -1518,8 +1780,12 @@
             if (wrongAnswers.length === 0) {
                 missionCompleteText.textContent = "You've reached the Sun and saved the day! Perfect score - you mastered all questions!";
                 returnTripSection.innerHTML = '';
+                speakTextSequential('Congratulations! You\'ve reached the Sun and saved the day! Perfect score - you mastered all questions!');
             } else {
                 missionCompleteText.textContent = `You've reached the Sun and saved the day! You got ${wrongAnswers.length} question${wrongAnswers.length === 1 ? '' : 's'} wrong. Review them on a return trip?`;
+                const wrongCount = wrongAnswers.length;
+                const wrongText = wrongCount === 1 ? 'question' : 'questions';
+                speakTextSequential('You\'ve reached the Sun and saved the day! You got ' + wrongCount + ' ' + wrongText + ' wrong. Would you like to review them on a return trip?');
                 returnTripSection.innerHTML = `
                     <p style="font-size: 16px; color: #cbd5e1; margin-bottom: 16px;">
                         You missed ${wrongAnswers.length} question${wrongAnswers.length === 1 ? '' : 's'} across ${new Set(wrongAnswers.map(wa => wa.planetIndex)).size} planet${new Set(wrongAnswers.map(wa => wa.planetIndex)).size === 1 ? '' : 's'}.
@@ -1537,6 +1803,7 @@
             returnTripIndex = 0;
             currentPlanetArea.classList.remove('hidden');
             missionComplete.classList.add('hidden');
+            speakTextSequential('Starting return trip. Let\'s review the questions you missed.');
             displayReturnTripQuestion();
         }
 
@@ -1549,6 +1816,7 @@
                 const returnTripSection = document.getElementById('returnTripSection');
                 missionCompleteText.textContent = "🌟 Return Trip Complete! 🌟 You've reviewed all the questions you missed.";
                 returnTripSection.innerHTML = '<p style="font-size: 16px; color: #cbd5e1; margin: 16px 0;">Great job reviewing! You\'re now ready for your next mission.</p>';
+                speakTextSequential('Return trip complete! You\'ve reviewed all the questions you missed. Great job! You\'re now ready for your next mission.');
                 return;
             }
 
@@ -1575,15 +1843,47 @@
             nextPlanetBtn.textContent = 'Next Review Question →';
         }
 
-        nextPlanetBtn.addEventListener('click', () => {
+        nextPlanetBtn.addEventListener('click', async () => {
             if (isReturnTrip) {
                 returnTripIndex++;
                 displayReturnTripQuestion();
             } else {
                 if (currentPlanetIndex < PLANETS.length - 1) {
+                    const fromPlanet = PLANETS[currentPlanetIndex];
+                    const fromSubtopic = currentTree.subtopics[currentPlanetIndex];
                     currentPlanetIndex++;
+                    const nextPlanet = PLANETS[currentPlanetIndex];
+                    const nextSubtopic = currentTree.subtopics[currentPlanetIndex];
+                    
+                    // Generate quirky transition message
+                    try {
+                        const response = await fetch('/api/planet-transition', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                topic: currentTree.topic,
+                                from_planet: fromPlanet.name,
+                                to_planet: nextPlanet.name,
+                                from_subtopic: fromSubtopic.name,
+                                to_subtopic: nextSubtopic.name
+                            })
+                        });
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            await speakTextSequential(data.message).catch(() => {});
+                        } else {
+                            // Fallback message
+                            await speakTextSequential('Traveling from ' + fromPlanet.name + ' to ' + nextPlanet.name + '.').catch(() => {});
+                        }
+                    } catch (error) {
+                        console.error('Error generating transition message:', error);
+                        // Fallback message
+                        await speakTextSequential('Traveling from ' + fromPlanet.name + ' to ' + nextPlanet.name + '.').catch(() => {});
+                    }
+                    
                     updateAsteroidFieldForPlanet(currentPlanetIndex);
-                    displayCurrentPlanet();
+                    await displayCurrentPlanet();
                 }
             }
         });

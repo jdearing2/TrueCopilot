@@ -417,3 +417,57 @@ def create_study_tree(topic: str, questions_per_subtopic: int = 3) -> dict:
         "subtopics": subtopics_with_questions
     }
 
+
+def generate_planet_transition_message(topic: str, from_planet: str, to_planet: str, from_subtopic: str, to_subtopic: str) -> str:
+    """
+    Generate a quirky, fun transition message between planets related to the topic.
+    
+    Args:
+        topic: The main study topic
+        from_planet: Name of the planet we're leaving
+        to_planet: Name of the planet we're traveling to
+        from_subtopic: The subtopic we just completed
+        to_subtopic: The subtopic we're about to study
+        
+    Returns:
+        A quirky transition message string
+    """
+    prompt = f"""Generate a short, quirky, fun, and encouraging space-themed transition message for a study app.
+
+Context:
+- Study topic: "{topic}"
+- Traveling from: {from_planet} (just finished: "{from_subtopic}")
+- Traveling to: {to_planet} (about to study: "{to_subtopic}")
+
+Requirements:
+- Keep it short (1-2 sentences, max 30 words)
+- Make it space-themed and fun
+- Reference the topic or subtopics if possible
+- Be encouraging and motivational
+- Use casual, friendly language
+- No emojis, just text
+
+Example style: "Blasting off from {from_planet}! Time to explore {to_planet} and dive into {to_subtopic}!"
+
+Transition message:"""
+
+    try:
+        response = call_with_retry(model.generate_content, prompt, request_type="PlanetTransition", max_retries=2)
+        text = response.text.strip()
+        
+        # Clean up the response - remove quotes if present
+        if text.startswith('"') and text.endswith('"'):
+            text = text[1:-1]
+        elif text.startswith("'") and text.endswith("'"):
+            text = text[1:-1]
+        
+        # Limit length
+        if len(text) > 150:
+            text = text[:147] + "..."
+        
+        return text
+    except Exception as e:
+        print(f"Error generating transition message: {e}")
+        # Fallback message
+        return f"Traveling from {from_planet} to {to_planet}. Let's continue studying {topic}!"
+
