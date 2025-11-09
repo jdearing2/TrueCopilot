@@ -6,8 +6,16 @@ CD into the repository
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt 
+```
+and
+```bash
 cd app 
 python3 app.py
+```
+or
+```bash
+supervisord -c supervisor/supervisord.conf
+# to stop use supervisorctl -c supervisor/supervisord.conf stop all
 ```
 
 ## Inspiration
